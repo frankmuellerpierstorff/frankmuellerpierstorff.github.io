@@ -1,320 +1,82 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>Hi, I’m Ben</title>
-<meta http-equiv="content-type" content="text/html; charset=utf-8" >
-<meta http-equiv="content-language" content="en">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hi, I’m Frank</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      font-size: 30px;
+      font-weight: 400;
+      line-height: 1.6;
+      background-color: #fafafa;
+      color: #000;
+      margin: 0;
+      padding: 0;
+    }
 
-<link rel="stylesheet" href="https://use.typekit.net/izk0jta.css">
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 60px 20px;
+    }
 
-<style type="text/css">
+    h1 {
+      font-size: 60px;
+      font-weight: 600;
+      margin-bottom: 40px;
+    }
 
-::-moz-selection { /* Code for Firefox */
-  color: #FFF;
-  background: #000;
-}
+    p {
+      margin-bottom: 40px;
+    }
 
-::selection {
-  color: #FFF;
-  background: #000;
-}
+    a {
+      color: #000;
+      text-decoration: none;
+      border-bottom: 2px solid #000;
+    }
 
-body {
-	font-family: "ff-real-headline-pro-2", "Helvetica Neue", "Segoe UI", Segoe, Helvetica, Arial, "Lucida Grande", sans-serif;
-	font-size: 30px;
-	font-weight: 400;
-	font-style: normal;
-	line-height: 1.5;
-	text-align: center;
-	margin: 0;
-	padding: 0;
-	background-color: #fafafa;
-}
+    a:hover {
+      border-bottom: none;
+    }
 
-.container {
-	max-width: 720px;
-	display: inline-block;
-	padding: 10px;
-	overflow: hidden;
-}
-
-.centered {
-	position: fixed;
-	top: 50%;
-	left: 50%;
-	/* bring your own prefixes */
-	transform: translate(-50%, -50%);
-}
-
-section {
-	margin-bottom: 150px;
-}
-	
-hr {
-	border: 2px solid #000;	
-}
-
-p {
-	text-align: left;
-}
-
-a, a:active, a:visited {
-	color: #000;
-	text-decoration: none;
-	border-bottom: 2px solid #000;
-}
-
-a:hover {
-	border-bottom: none;
-}
-
-ol {
-	text-align: left;
-	line-height: 1.8;
-	margin: 0;
-	padding: 0;
-	list-style-position: inside;
-}
-
-ul {
-	list-style: none;
-	list-style-type: none;
-	list-style-position: outside;
-	margin: 0;
-	padding: 0;
-}
-
-ul.l2 {
-	padding-left: 50px;
-}
-
-ul.l3 {
-	padding-left: 0;
-}
-
-
-H1, H2, H3, H4, H5 {
-	text-align: left;
-	line-height: 1.2;
-	margin: 40px 0 0 0;
-}
-
-H1, H2 {
-	font-family: "ff-real-headline-pro", "Helvetica Neue", "Segoe UI", Segoe, Helvetica, Arial, "Lucida Grande", sans-serif;
-	font-size: 60px;
-	font-weight: 400; 
-	font-style: normal;
-	margin-top: 80px;
-	margin-bottom: 20px;
-}
-
-H2 {
-	font-size: 42px;
-}
-
-H3, H4, H5 {
-	font-family: "ff-real-headline-pro", "Helvetica Neue", "Segoe UI", Segoe, Helvetica, Arial, "Lucida Grande", sans-serif;
-	font-weight: 700;
-	line-height: 1.5;
-}
-
-H3 {
-	font-size: 28px;
-}
-
-H4 {
-	font-size: 26px;
-}
-
-H5 {
-	font-size: 22px;
-}
-
-.subhead-cover {
-	font-family: "ff-real-headline-pro-2", "Helvetica Neue", "Segoe UI", Segoe, Helvetica, Arial, "Lucida Grande", sans-serif;
-	font-size: 26px;
-	font-weight: 400; 
-	font-style: normal; 
-	text-align: left;
-	line-height: 1.4;
-}
-
-footer {
-	text-align: center;	
-}
-	
-footer ul {
-	list-style: disc;
-	list-style-type: disc;
-}
-	
-/* Media Queries */
-
-/* Desktop Big Ass Screens */
-@media (min-width: 1441px) {
-
-
-}
-
-@media (max-width: 900px) {
- 
-}
-
-/* Tablet */
-@media (max-width: 1136px) and (min-width: 769px) {
-
-
-
-}
-
-/* Tablet */
-@media (max-width: 768px) and (min-width: 641px) {
-
-
-
-}
-
-/* Mobile */
-@media (max-width: 640px) and (min-width: 481px) {  
-
-
-
-}
-
-/* Mobile */
-@media (max-width: 480px) and (min-width: 321px) {  
- 
-
-  
-}
-
-/* Mobile */
-@media (max-width: 480px) and (min-width: 0px) { 
-
-body {
-	font-size: 18px;
-}
-
-section {
-	margin-bottom: 80px;
-}
-
-.container {
-	width: 90%;
-	display: inline-block;
-	padding: 10px;
-	overflow: hidden;
-}
-
-p {
-	margin-bottom: 30px;
-}
-
-ol {
-	text-align: left;
-	line-height: 1.8;
-	margin: 0;
-	padding: 0;
-	list-style-position: inside;
-}
-
-ul {
-	list-style: none;
-	list-style-type: none;
-	list-style-position: outside;
-	margin: 0;
-	padding: 0;
-}
-
-ul.l2 {
-	padding-left: 50px;
-}
-
-ul.l3 {
-	padding-left: 0;
-}
-
-
-H1, H2, H3, H4, H5 {
-	text-align: left;
-	line-height: 1.2;
-	margin: 20px 0 0 0;
-}
-
-H1, H2 {
-	font-family: "ff-real-headline-pro", "Helvetica Neue", "Segoe UI", Segoe, Helvetica, Arial, "Lucida Grande", sans-serif;
-	font-size: 70px;
-	font-weight: 400; 
-	font-style: normal;
-	margin-top: 40px;
-	margin-bottom: 20px;
-}
-
-H2 {
-	font-size: 28px;
-}
-
-H3, H4, H5 {
-	line-height: 1.5;
-}
-
-H3 {
-	font-size: 20px;
-}
-
-H4 {
-	font-size: 18px;
-}
-
-H5 {
-	font-size: 16px;
-}
-
-.subhead-cover {
-	font-family: "ff-real-headline-pro", "Helvetica Neue", "Segoe UI", Segoe, Helvetica, Arial, "Lucida Grande", sans-serif;
-	font-size: 18px;
-	font-weight: normal; 
-	font-style: normal; 
-	text-align: left;
-	line-height: 1.7;
-}
-  
-}
-
-</style>
+    @media (max-width: 600px) {
+      body {
+        font-size: 20px;
+      }
+      h1 {
+        font-size: 42px;
+      }
+    }
+  </style>
 </head>
-
 <body>
-	<div class="container">
-		<header>
-		</header>
-		<main id="cover">
-			<h1>Hi there!</h1>
-				<p>My name is Benedikt Lehnert (but everybody calls me Ben). I’m a designer, educator, and advisor living between Princeton, NJ and Kingston, NY. </p> 
-				
-				<p>I focus my energy on creating useful products people love and leading the world-class teams that make them. I mentor and teach to equip the next generation of leaders with the necessary optimism and creative courage to tackle the paradigm shifts ahead.</p>
-				
-				<p>I host a bi-weekly podcast called <a href="https://poetsandthinkers.co">Poets & Thinkers</a> where I explore the humanistic future of business leadership. And I write a newsletter called <a href="http://benediktlehnert.substack.com">“To whom it may inspire”</a> where I cover topics at the intersection of business and poetry.</p>
-				
-				<p>As a designer turned big tech executive and angel investor, I’ve experienced both what it takes to take a startup from zero to multi million dollar exit as well as how to successfully transform the culture of companies such as Microsoft and SAP to be experience-focused – and lift the business to new heights because of it.</p>
+  <div class="container">
+    <h1>Hi there.</h1>
 
-				<p>I’m the founder and CEO of <a href="https://www.74west.co">74West</a>, a sleeve-up, hands-on advisory practice at the intersection of customer experience, design integration, and strategy execution. I partner 1:1 with CEOs, executives, or boards who are navigating pivotal moments in their organizations.</p>
+    <p>I’m Frank Müller-Pierstorff — or just Franko, Fränk, Fna… people like to invent names. I live in Berlin. I design, teach, advise, and build.</p>
 
-				<p>In my role as Entrepreneurship & Design Fellow at <a href="https://kellercenter.princeton.edu">Princeton’s Keller Center</a>, I research and teach the convergence of entrepreneurship, design, and business with a focus on AI and co-creativity, neuroaesthetics, and the socio-economic responsibility of design.</p>
+    <p>My work begins with a question: What brings people closer — to each other, to themselves, to what matters? That question has shaped products, teams, and cultures I’ve created. It continues to shape how I lead, listen, and make.</p>
 
-				<p>As an advisory board member of the <a href="https://www.designexecutivecouncil.com">Design Executive Council (DXC)</a> I help shape the standards and developments of the humanistic design field as AI causes paradigm shifts at the nexus of experience design and business strategy.</p>
+    <p>I’ve taken startups from idea to outcome — and all the way to multi million dollar exits. I’ve helped global companies like BCG rediscover who they are — and what they could become. When things are in motion, I come in. Not to control the shift, but to give it direction.</p>
 
-				<p>Along the way, I’ve learned that the most successful businesses of the 21st century aren’t built on spreadsheets alone. They’re built on a profound understanding of human experience, hands-on creative leadership, and the courage to challenge conventional business wisdom. This insight drives my work with leaders who are ready to move beyond traditional frameworks and create organizations that inspire both their customers and their teams.</p>
+    <p>I’m the founder of Obvious — a hands-on practice where purpose turns into strategy, and brand, product, and experience align. I work 1:1 with founders, leaders, and creators when the stakes are real and the way forward is still taking shape.</p>
 
-				<p>I enjoy spending my spare time with my family, reading, painting, doing yoga, and walking. I love pour-over coffee, typography, handmade things, the sound of water, and photography in black and white.</p> 
-				
-				<p>If you want to talk shop or have a question you think I could help you answer, subscribe to <a href="http://benediktlehnert.substack.com">my newsletter</a> and connect with me on <a href="https://www.linkedin.com/in/benediktlehnert">Linkedin</a>, <a href="mailto:benedikt.lehnert+desk@gmail.com">drop me a line</a> or let’s meet for a coffee.</p>
-		</main>
-		<footer>
-			<img src="images/ben-scribble-head.png" alt="A scribbled circle with many lines overlapping to fill it, on top two white circles and a semi circle shape forming a smiley face." width="300px">
-		</footer>
-	</div>
+    <p>Right now, I’m exploring how design changes when intelligence becomes artificial. What remains human. What disappears. What begins. It’s not just a technical shift — it’s an emotional one. And I’m listening carefully.</p>
+
+    <p>I’ve learned that the most resilient companies are not built on spreadsheets alone. They are made by people who care, who see clearly, and who are brave enough to challenge what no longer fits. That’s the kind of work I seek — and the kind of people I seek it with.</p>
+
+    <p>When I’m not working, I’m with my family. Reading. Walking. Moving. I love pour-over coffee, art in all its forms, and making electronic music late at night.</p>
+
+    <p>If something here resonates — if you’re building, shifting, or simply wondering — reach out. Ask a question. Or let’s meet for a coffee.</p>
+
+    <p>
+      → <a href="https://www.linkedin.com/in/frankmuellerpierstorff">LinkedIn</a><br>
+      → <a href="mailto:frank@mueller-pierstorff.com">frank@mueller-pierstorff.com</a>
+    </p>
+  </div>
 </body>
 </html>
