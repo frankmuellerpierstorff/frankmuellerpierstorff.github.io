@@ -3,112 +3,187 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Work — Frank Müller-Pierstorff</title>
-  <!-- Satoshi Font (Fontshare) -->
+  <title>Work, Frank Müller-Pierstorff</title>
   <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700&display=swap">
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     html, body {
-      margin: 0;
-      padding: 0;
       font-family: 'Satoshi', sans-serif;
       font-weight: 400;
-      background: radial-gradient(circle at 30% 40%, #f9f9f9, #ffffff);
-      color: rgba(0, 0, 0, 0.85);
+      background: #F0EEE7;
+      color: #141413;
       font-size: 20px;
       line-height: 1.6;
-      text-align: left;
     }
-    body {
-      display: flex;
-      justify-content: center;
-      padding: 40px 40px 80px;
-      box-sizing: border-box;
-    }
-    .container {
-      max-width: 800px;
+
+    /* Hero Section */
+    .hero {
       width: 100%;
+      min-height: 50vh;
+      background: #E2DBCE;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 40px;
+      text-align: center;
     }
-    h1 {
-      font-size: clamp(60px, 10vw, 120px);
+
+    .hero-content {
+      max-width: 800px;
+    }
+
+    .hero h1 {
+      font-size: clamp(48px, 8vw, 96px);
       font-weight: 700;
-      margin: 0 0 60px 0;
+      margin-bottom: 16px;
+      color: #141413;
+      line-height: 1.1;
     }
-    h2 {
-      font-size: 32px;
-      font-weight: 700;
-      margin: 60px 0 8px 0;
-      color: rgba(0, 0, 0, 0.95);
-    }
-    h3 {
-      font-size: 18px;
+
+    .hero .subtitle {
+      font-size: clamp(20px, 3vw, 28px);
       font-weight: 400;
-      margin: 0 0 4px 0;
-      color: rgba(0, 0, 0, 0.6);
+      color: #141413;
+      margin-bottom: 24px;
     }
-    p {
-      margin: 0 0 1em;
-      font-size: 20px;
+
+    .hero .tagline {
+      font-size: clamp(16px, 2vw, 20px);
+      font-weight: 400;
+      color: #141413;
+      line-height: 1.6;
+      max-width: 600px;
+      margin: 0 auto;
     }
+
+    /* Main Content */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 80px 40px;
+    }
+
+    h2 {
+      font-size: clamp(24px, 4vw, 32px);
+      font-weight: 700;
+      margin: 80px 0 40px 0;
+      color: #141413;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #E2DBCE;
+    }
+
+    h2:first-child {
+      margin-top: 0;
+    }
+
     .project {
       margin-bottom: 60px;
-      padding-bottom: 40px;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     }
-    .project:last-child {
-      border-bottom: none;
+
+    .project h3 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #141413;
     }
-    .bullets {
-      margin: 16px 0;
-      padding-left: 0;
+
+    .project .meta {
+      font-size: 16px;
+      font-weight: 400;
+      color: #141413;
+      margin-bottom: 16px;
+    }
+
+    .project p {
+      margin-bottom: 16px;
+      font-size: 18px;
+      line-height: 1.7;
+    }
+
+    .project ul {
       list-style: none;
+      padding: 0;
+      margin: 16px 0;
     }
-    .bullets li {
-      margin-bottom: 8px;
-      padding-left: 20px;
+
+    .project ul li {
+      padding-left: 24px;
+      margin-bottom: 12px;
       position: relative;
+      font-size: 18px;
+      line-height: 1.6;
     }
-    .bullets li:before {
+
+    .project ul li:before {
       content: "•";
       position: absolute;
       left: 0;
       font-weight: 700;
+      color: #141413;
     }
+
+    .number {
+      font-weight: 700;
+      color: #141413;
+    }
+
     a, a:active, a:visited {
-      color: rgba(0, 0, 0, 0.85);
+      color: #141413;
       text-decoration: none;
-      border-bottom: 2px solid rgba(0, 0, 0, 0.85);
+      border-bottom: 2px solid #141413;
     }
+
     a:hover {
       border-bottom: none;
     }
-    .back {
-      margin-bottom: 40px;
-      font-size: 18px;
+
+    .footer {
+      margin-top: 80px;
+      padding-top: 40px;
+      border-top: 1px solid #E2DBCE;
+      font-size: 16px;
+      color: #141413;
+      text-align: left;
     }
-    .number {
-      font-weight: 700;
-      color: rgba(0, 0, 0, 0.95);
+
+    @media (max-width: 768px) {
+      .hero {
+        min-height: 40vh;
+        padding: 60px 20px;
+      }
+      .container {
+        padding: 60px 20px;
+      }
     }
   </style>
 </head>
 <body>
-<div class="container">
-  <div class="back">
-    <a href="/">← Back</a>
-  </div>
 
-  <h1>Work</h1>
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-content">
+    <h1>Frank Müller-Pierstorff</h1>
+    <div class="subtitle">Designer, Founder, Advisor</div>
+    <div class="tagline">20 years building brand through experiential creative programs and AI products</div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="container">
+
+  <h2>Selected Work</h2>
 
   <!-- BCG -->
   <div class="project">
-    <h2>BCG (Boston Consulting Group)</h2>
-    <h3>Global Creative Director • 2017–2021</h3>
-    <p>Led corporate rebrand that helped transform a 50-year-old company from <span class="number">$5B to $12B revenue</span>. Built global experiential creative function from zero.</p>
-    <ul class="bullets">
-      <li>Designed Davos activations 2018–2021 — flagship conference presence strategy</li>
-      <li>Corporate rebrand: brand architecture and visual identity scaling globally</li>
+    <h3>BCG (Boston Consulting Group)</h3>
+    <div class="meta">Global Creative Director • 2017–2021</div>
+    <p>Led corporate rebrand that helped transform a 50-year-old company from <span class="number">$5B to $12B revenue</span>. Built global experiential creative function from zero. See live work at <a href="https://www.bcg.com" target="_blank">bcg.com</a>.</p>
+    <ul>
+      <li>Designed Davos activations 2018–2021, flagship conference presence strategy</li>
+      <li>Corporate rebrand: established purpose, brand architecture, and visual identity scaling globally</li>
       <li>Built trade show and event design methodology maintaining craft at scale</li>
-      <li>TED@BCG installation: "Circular Escape" — electronic sound installation (<a href="https://www.ted.com" target="_blank">TED Talk</a>)</li>
+      <li>TED@BCG installation: "Circular Escape", electronic sound installation (<a href="https://www.youtube.com/watch?v=5-GyRSds9co" target="_blank">Watch TED Talk</a>)</li>
       <li>Vendor and agency management frameworks enabling distributed creative teams</li>
       <li>Coordinated global teams across New York, Boston, San Francisco offices</li>
     </ul>
@@ -116,23 +191,23 @@
 
   <!-- Together -->
   <div class="project">
-    <h2>Together</h2>
-    <h3>Founder & Chief Product Officer • 2021–2025</h3>
+    <h3>Together</h3>
+    <div class="meta">Founder & Chief Product Officer • 2021–2025</div>
     <p>Voice-first AI couple counseling platform. <span class="number">4 years shipping production AI</span> in one of the hardest use cases. <span class="number">Acquired 2025</span>.</p>
-    <ul class="bullets">
+    <ul>
       <li>Built brand and product from scratch for AI-native platform</li>
-      <li>Tested Claude, ChatGPT, ElevenLabs against each other in production — systematic comparison of what each platform could do in high-stakes contexts where mistakes matter</li>
+      <li>Tested Claude, ChatGPT, ElevenLabs against each other in production, systematic comparison of capabilities in high-stakes contexts where mistakes matter</li>
       <li>Designed complete user experience for relationship dynamics, emotional nuance, real-time empathy</li>
-      <li>Successfully acquired — validated product-market fit in emerging AI category</li>
+      <li>Successfully acquired, validated product-market fit in emerging AI category</li>
     </ul>
   </div>
 
   <!-- EyeEm -->
   <div class="project">
-    <h2>EyeEm</h2>
-    <h3>Chief Design Officer • 2013–2016</h3>
+    <h3>EyeEm</h3>
+    <div class="meta">Chief Design Officer • 2013–2016</div>
     <p>Led brand strategy and product design through hypergrowth from <span class="number">1M to 18M users</span>.</p>
-    <ul class="bullets">
+    <ul>
       <li>Brand architecture and design systems scaling with company velocity</li>
       <li>Experiential activations and community events building loyalty beyond digital product</li>
       <li>Physical brand presence and partnerships amplifying platform growth</li>
@@ -141,69 +216,71 @@
 
   <!-- Adidas -->
   <div class="project">
-    <h2>Adidas Asia</h2>
-    <h3>Creative Director (Ogilvy) • 2007</h3>
+    <h3>Adidas Asia</h3>
+    <div class="meta">Creative Director (Ogilvy) • 2007</div>
     <p>Interactive game and brand activation reaching <span class="number">6M players in 4 weeks</span>. Pioneering experiential work combining physical installation and digital before it was standard practice.</p>
   </div>
 
   <!-- Attitude -->
   <div class="project">
-    <h2>Attitude Incubator</h2>
-    <h3>Founder • 2010–2013</h3>
-    <p>Built brand infrastructure and event strategies across portfolio companies simultaneously. Created frameworks that worked across multiple contexts and stages.</p>
+    <h3>Attitude Incubator</h3>
+    <div class="meta">Founder • 2010–2013</div>
+    <p>Built brand infrastructure and event strategies across portfolio companies. Created frameworks that worked across multiple contexts and stages.</p>
   </div>
 
   <!-- CODE -->
   <div class="project">
-    <h2>CODE University</h2>
-    <h3>Lecturer • 2019–2022</h3>
-    <p>Taught brand strategy and experiential design for 3 years. Systematized frameworks others could execute — proof of ability to transfer knowledge and establish repeatable processes.</p>
+    <h3>CODE University</h3>
+    <div class="meta">Lecturer • 2019–2022</div>
+    <p>Taught brand strategy and experiential design for 3 years. Systematized frameworks others could execute.</p>
   </div>
 
   <!-- Startups -->
   <div class="project">
-    <h2>Founding Designer / Creative Director</h2>
-    <h3>Multiple Startups • 2007–2013</h3>
+    <h3>Founding Designer / Creative Director</h3>
+    <div class="meta">Multiple Startups • 2007–2013</div>
     <p>Founded/co-founded 5 companies with <span class="number">80% success rate</span>: PAMONO, DECOVRY, Tweek, EAT. Learned patterns of brand building from pre-seed through growth.</p>
   </div>
 
   <!-- Agency -->
   <div class="project">
-    <h2>Agency Career</h2>
-    <h3>Creative Director / Art Director • 2001–2013</h3>
-    <ul class="bullets">
+    <h3>Agency Career</h3>
+    <div class="meta">Creative Director / Art Director • 2001–2013</div>
+    <ul>
       <li>Deutsche Telekom: Led innovation department designing future-facing brand experiences</li>
       <li>IBM iX, WPP, BBDO, Razorfish: Built foundation in creative direction, brand strategy, interactive design</li>
-      <li><span class="number">15+ international awards</span>: Cannes Lions, D&AD, One Show</li>
+      <li><span class="number">15+ international awards</span> including D&AD, One Show, Asia Pacific Creative Awards</li>
       <li>10+ years freelancer: started projects solo, built teams when they scaled</li>
     </ul>
   </div>
 
-  <!-- Recognition -->
+  <h2>Recognition</h2>
+  
   <div class="project">
-    <h2>Recognition & Publications</h2>
-    <ul class="bullets">
-      <li><strong>TED Talk:</strong> "Circular Escape" — Electronic sound installation and experiential piece (<a href="https://www.ted.com" target="_blank">Watch</a>)</li>
-      <li><strong>Published:</strong> "A Touch of Code: Interactive Installations and Experiences" (Gestalten Verlag) — Featured for typographic synthesizer work</li>
-      <li><strong>Awards:</strong> 15+ international including Cannes Lions, D&AD, One Show</li>
+    <ul>
+      <li><strong>TED Talk:</strong> "Circular Escape", Electronic sound installation (<a href="https://www.youtube.com/watch?v=5-GyRSds9co" target="_blank">Watch</a>)</li>
+      <li><strong>Published:</strong> "A Touch of Code: Interactive Installations and Experiences" (Gestalten Verlag)</li>
+      <li><strong>Awards:</strong> 15+ international including D&AD, One Show, Asia Pacific Creative Awards</li>
     </ul>
   </div>
 
-  <!-- Current -->
+  <h2>Currently</h2>
+  
   <div class="project">
-    <h2>Currently</h2>
-    <ul class="bullets">
-      <li><strong>Obvious:</strong> Founder — working with founders on brand strategy and positioning</li>
-      <li><strong>BlueYard Capital & Boost Capital:</strong> Advisor, Brand + Product — advising portfolio companies across European startup ecosystem</li>
+    <ul>
+      <li><strong>Obvious:</strong> Founder, working with founders on brand strategy and positioning</li>
+      <li><strong>BlueYard Capital & Boost Capital:</strong> Advisor, Brand + Product</li>
       <li>Berlin-based, location-flexible, equally comfortable in San Francisco or New York</li>
     </ul>
   </div>
 
-  <p style="margin-top: 60px; font-size: 18px; color: rgba(0, 0, 0, 0.6);">
-    <a href="/">← Back to home</a> • 
+  <!-- Footer -->
+  <div class="footer">
     <a href="mailto:frank@thisisobvious.com">Get in touch</a> • 
     <a href="https://www.linkedin.com/in/frankmuellerpierstorff" target="_blank">LinkedIn</a>
-  </p>
+  </div>
+
 </div>
+
 </body>
 </html>
