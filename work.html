@@ -2,285 +2,843 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Work, Frank Müller-Pierstorff</title>
-  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700&display=swap">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frank Müller-Pierstorff</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    html, body {
-      font-family: 'Satoshi', sans-serif;
-      font-weight: 400;
-      background: #F0EEE7;
-      color: #141413;
-      font-size: 20px;
-      line-height: 1.6;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #fafaf8;
+      --surface: #ffffff;
+      --surface-warm: #f5f4f0;
+      --border: #e8e6e0;
+      --border-light: #f0ede8;
+      --text: #1a1a18;
+      --muted: #4a4844;
+      --muted-light: #7a7870;
+      --tag-bg: #f2f0eb;
+      --tag-border: #e4e2dc;
+      --accent: #1a1a18;
     }
 
-    /* Hero Section */
-    .hero {
-      width: 100%;
-      min-height: 50vh;
-      background: #E2DBCE;
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 20px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(250,250,248,0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .nav-left {
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 80px 40px;
-      text-align: center;
+      gap: 10px;
     }
 
-    .hero-content {
-      max-width: 800px;
+    .nav-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      object-position: center top;
+      border: 1px solid var(--border);
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .nav-name {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      color: var(--text);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 36px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.01em;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    @media (max-width: 780px) {
+      .nav-links { display: none; }
+    }
+
+    /* HERO */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 140px 48px 100px;
+      max-width: 960px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .hero::before {
+      content: '';
+      position: fixed;
+      top: -200px;
+      right: -200px;
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(ellipse at center,
+        rgba(255, 220, 180, 0.22) 0%,
+        rgba(255, 200, 150, 0.10) 40%,
+        transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .hero-inner { width: 100%; position: relative; z-index: 1; }
+    .hero-text { display: flex; flex-direction: column; }
+
+    .hero-label {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted-light);
+      margin-bottom: 36px;
     }
 
     .hero h1 {
-      font-size: clamp(48px, 8vw, 96px);
-      font-weight: 700;
-      margin-bottom: 16px;
-      color: #141413;
-      line-height: 1.1;
+      font-size: clamp(52px, 7.5vw, 92px);
+      font-weight: 300;
+      letter-spacing: -0.035em;
+      line-height: 1.02;
+      color: var(--text);
+      margin-bottom: 44px;
     }
 
-    .hero .subtitle {
-      font-size: clamp(20px, 3vw, 28px);
-      font-weight: 400;
-      color: #141413;
-      margin-bottom: 24px;
+    .hero h1 em {
+      font-style: normal;
+      color: var(--muted-light);
     }
 
-    .hero .tagline {
-      font-size: clamp(16px, 2vw, 20px);
-      font-weight: 400;
-      color: #141413;
-      line-height: 1.6;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    /* Main Content */
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 80px 40px;
-    }
-
-    h2 {
-      font-size: clamp(24px, 4vw, 32px);
-      font-weight: 700;
-      margin: 80px 0 40px 0;
-      color: #141413;
-      padding-bottom: 16px;
-      border-bottom: 2px solid #E2DBCE;
-    }
-
-    h2:first-child {
-      margin-top: 0;
-    }
-
-    .project {
-      margin-bottom: 60px;
-    }
-
-    .project h3 {
-      font-size: 24px;
-      font-weight: 700;
-      margin-bottom: 4px;
-      color: #141413;
-    }
-
-    .project .meta {
-      font-size: 16px;
-      font-weight: 400;
-      color: #141413;
-      margin-bottom: 16px;
-    }
-
-    .project p {
-      margin-bottom: 16px;
+    .hero-sub {
       font-size: 18px;
+      color: var(--muted);
+      max-width: 580px;
+      line-height: 1.75;
+      margin-bottom: 56px;
+    }
+
+    .hero-sub strong {
+      color: var(--text);
+      font-weight: 400;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 22px;
+      font-size: 14px;
+      font-weight: 400;
+      font-family: inherit;
+      letter-spacing: 0.01em;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--text);
+      color: var(--bg);
+    }
+
+    .btn-primary:hover { background: #333330; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      color: var(--text);
+      border-color: #c8c6c0;
+      background: var(--surface-warm);
+    }
+
+    /* DIVIDER */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* SECTIONS */
+    section {
+      padding: 100px 48px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted-light);
+      margin-bottom: 48px;
+    }
+
+    /* THESIS */
+    .thesis-quote {
+      font-size: clamp(24px, 3.2vw, 36px);
+      font-weight: 300;
+      letter-spacing: -0.025em;
+      line-height: 1.35;
+      color: var(--text);
+      border-left: 2px solid var(--border);
+      padding-left: 28px;
+      margin-bottom: 44px;
+    }
+
+    .thesis-body {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 620px;
+      line-height: 1.85;
+    }
+
+    .thesis-body p + p { margin-top: 22px; }
+
+    .thesis-body strong {
+      color: var(--text);
+      font-weight: 400;
+    }
+
+    /* HIGHLIGHTS */
+    .highlights-wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 48px 96px;
+    }
+
+    .highlights {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .highlight-card {
+      background: var(--surface);
+      padding: 52px 44px;
+    }
+
+    .highlight-card::before {
+      display: none;
+    }
+
+    .highlight-number {
+      font-size: clamp(64px, 8vw, 110px);
+      font-weight: 300;
+      letter-spacing: -0.04em;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+
+    .highlight-label {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 280px;
+    }
+
+    /* EXPERIENCE */
+    .experience-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .exp-item {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 32px;
+      padding: 36px 0;
+      border-bottom: 1px solid var(--border-light);
+      align-items: start;
+    }
+
+    .exp-item:first-child { border-top: 1px solid var(--border-light); }
+
+    .exp-meta {
+      font-size: 12px;
+      color: var(--muted-light);
+      line-height: 1.6;
+      padding-top: 3px;
+    }
+
+    .exp-company {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .exp-role {
+      font-size: 13px;
+      color: var(--muted-light);
+      margin-bottom: 12px;
+    }
+
+    .exp-desc {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 14px;
+    }
+
+    /* Bullet points within experience */
+    .exp-bullets {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 4px;
+    }
+
+    .exp-bullets li {
+      font-size: 14px;
+      color: var(--muted-light);
+      line-height: 1.6;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .exp-bullets li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: var(--muted-light);
+      font-size: 12px;
+      top: 2px;
+    }
+
+    .exp-bullets a {
+      color: var(--muted);
+      text-decoration: underline;
+      text-decoration-color: var(--border);
+      text-underline-offset: 3px;
+      transition: color 0.2s;
+    }
+
+    .exp-bullets a:hover { color: var(--text); }
+
+    /* SKILLS / TAGS */
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 48px;
+    }
+
+    .tag {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--tag-bg);
+      border: 1px solid var(--tag-border);
+      padding: 6px 14px;
+      border-radius: 100px;
+      letter-spacing: 0.01em;
+    }
+
+    /* RECOGNITION STRIP */
+    .recognition {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 48px;
+    }
+
+    .recognition-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      gap: 0;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .recognition-item {
+      font-size: 12px;
+      color: var(--muted-light);
+      letter-spacing: 0.01em;
+    }
+
+    .recognition-item a {
+      color: var(--muted-light);
+      text-decoration: underline;
+      text-decoration-color: var(--border);
+      text-underline-offset: 3px;
+      transition: color 0.2s;
+    }
+
+    .recognition-item a:hover { color: var(--text); }
+
+    .recognition-item a:hover { color: var(--text); }
+
+    /* WHY AI */
+    .why-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 52px 64px;
+    }
+
+    .why-item h3 {
+      font-size: clamp(18px, 2.2vw, 24px);
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 14px;
+      line-height: 1.2;
+    }
+
+    .why-item p {
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    /* CONTACT */
+    .contact-section {
+      background: linear-gradient(180deg, var(--bg) 0%, #f7f3ec 100%);
+    }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 56px;
+      align-items: start;
+    }
+
+    .contact-headline {
+      font-size: clamp(30px, 4vw, 48px);
+      font-weight: 300;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+      color: var(--text);
+    }
+
+    .contact-sub {
+      font-size: 15px;
+      color: var(--muted);
+      margin-top: 16px;
       line-height: 1.7;
     }
 
-    .project ul {
-      list-style: none;
-      padding: 0;
-      margin: 16px 0;
+    .contact-links {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
-    .project ul li {
-      padding-left: 24px;
-      margin-bottom: 12px;
-      position: relative;
-      font-size: 18px;
-      line-height: 1.6;
-    }
-
-    .project ul li:before {
-      content: "•";
-      position: absolute;
-      left: 0;
-      font-weight: 700;
-      color: #141413;
-    }
-
-    .number {
-      font-weight: 700;
-      color: #141413;
-    }
-
-    a, a:active, a:visited {
-      color: #141413;
+    .contact-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       text-decoration: none;
-      border-bottom: 2px solid #141413;
+      color: var(--muted);
+      font-size: 15px;
+      background: var(--surface);
+      transition: all 0.2s;
     }
 
-    a:hover {
-      border-bottom: none;
+    .contact-link:hover {
+      color: var(--text);
+      border-color: #c8c6c0;
+      background: var(--surface-warm);
     }
 
-    .footer {
-      margin-top: 80px;
-      padding-top: 40px;
-      border-top: 1px solid #E2DBCE;
+    .contact-link-arrow {
       font-size: 16px;
-      color: #141413;
-      text-align: left;
+      color: var(--border);
+      transition: color 0.2s;
     }
 
-    @media (max-width: 768px) {
-      .hero {
-        min-height: 40vh;
-        padding: 60px 20px;
+    .contact-link:hover .contact-link-arrow {
+      color: var(--muted-light);
+    }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f7f3ec;
+    }
+
+    footer p {
+      font-size: 12px;
+      color: var(--muted-light);
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 780px) {
+      .nav-links { display: none; }
+
+      .hero { padding: 110px 24px 64px; }
+
+      section { padding: 64px 24px; }
+      .highlights-wrap { padding: 0 24px 72px; }
+      .recognition { padding: 16px 24px; }
+      .recognition-inner { flex-direction: column; align-items: flex-start; gap: 8px; }
+
+      .highlight-card { padding: 32px 24px; }
+
+      .exp-item {
+        grid-template-columns: 1fr;
+        gap: 6px;
       }
-      .container {
-        padding: 60px 20px;
-      }
+
+      .why-grid { grid-template-columns: 1fr; gap: 36px; }
+
+      .contact-grid { grid-template-columns: 1fr; }
+
+      footer { flex-direction: column; gap: 6px; padding: 20px 24px; text-align: center; }
     }
   </style>
 </head>
 <body>
 
-<!-- Hero -->
-<div class="hero">
-  <div class="hero-content">
-    <h1>Frank Müller-Pierstorff</h1>
-    <div class="subtitle">Designer, Founder, Advisor</div>
-    <div class="tagline">20 years building brand through experiential creative programs and AI products</div>
-  </div>
-</div>
-
-<!-- Main Content -->
-<div class="container">
-
-  <h2>Selected Work</h2>
-
-  <!-- BCG -->
-  <div class="project">
-    <h3>BCG (Boston Consulting Group)</h3>
-    <div class="meta">Global Creative Director • 2017–2021</div>
-    <p>Led corporate rebrand that helped transform a 50-year-old company from <span class="number">$5B to $12B revenue</span>. Established and scaled global experiential creative function. See live work at <a href="https://www.bcg.com" target="_blank">bcg.com</a>.</p>
-    <ul>
-      <li>Designed Davos activations 2018–2021, flagship conference presence strategy</li>
-      <li>Corporate rebrand: established purpose, brand architecture, and visual identity scaling globally</li>
-      <li>Built trade show and event design methodology maintaining craft at scale</li>
-      <li>TED@BCG installation: "Circular Escape", electronic sound installation (<a href="https://www.youtube.com/watch?v=5-GyRSds9co" target="_blank">Watch TED Talk</a>)</li>
-      <li>Vendor and agency management frameworks enabling distributed creative teams</li>
-      <li>Coordinated global teams across New York, Boston, London offices</li>
+  <!-- NAV -->
+  <nav>
+    <div class="nav-left">
+      <img class="nav-avatar" src="frank.png" alt="Frank Müller-Pierstorff" />
+      <span class="nav-name">Frank Müller-Pierstorff</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#thesis">Thesis</a></li>
+      <li><a href="#experience">Experience</a></li>
+      <li><a href="#why-ai">Why AI</a></li>
+      <li><a href="#contact">Contact</a></li>
     </ul>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-inner">
+      <p class="hero-label">Available for executive roles · Berlin · 2026</p>
+      <h1>
+        Design &amp; Product<br>
+        at the frontier<br>
+        <em>of intelligence.</em>
+      </h1>
+      <p class="hero-sub">
+        25 years at the intersection of <strong>design, product, and narrative</strong> —
+        from IBM and Ogilvy to founding an acquired AI company.
+        Now looking to bring taste, clarity, and craft to the teams
+        shaping what AI becomes.
+      </p>
+      <div class="hero-cta">
+        <a href="mailto:frank@thisisobvious.com" class="btn btn-primary">Get in touch</a>
+        <a href="#experience" class="btn btn-ghost">See full background</a>
+      </div>
+    </div>
   </div>
 
-  <!-- Together -->
-  <div class="project">
-    <h3>Together</h3>
-    <div class="meta">Founder & Chief Product Officer • 2021–2025</div>
-    <p>Voice-first AI couple counseling platform. <span class="number">4 years shipping production AI</span> in one of the hardest use cases. <span class="number">Acquired 2025</span>.</p>
-    <ul>
-      <li>Built brand and product from scratch for AI-native platform</li>
-      <li>Tested Claude, ChatGPT, ElevenLabs against each other in production, systematic comparison of capabilities in high-stakes contexts where mistakes matter</li>
-      <li>Designed complete user experience for relationship dynamics, emotional nuance, real-time empathy</li>
-      <li>Successfully acquired, validated product-market fit in emerging AI category</li>
-    </ul>
+  <div class="divider" style="max-width:960px;margin:0 auto;"></div>
+
+  <!-- THESIS -->
+  <section id="thesis">
+    <p class="section-label">Thesis</p>
+    <div class="thesis-quote">
+      "In the AI era, taste is the only moat."
+    </div>
+    <div class="thesis-body">
+      <p>
+        Features ship in weeks. Your competitors use the same models.
+        What remains is <strong>who you are</strong> — not what you build.
+      </p>
+      <p>
+        The companies that will matter are the ones with a clear point of view:
+        on design, on language, on what it means to build something
+        <strong>worth trusting</strong>. That clarity doesn't emerge from roadmaps.
+        It's a creative and strategic act.
+      </p>
+      <p>
+        This is the work I've done across two decades — and what I want to
+        bring to the organizations defining the next era of intelligence.
+      </p>
+    </div>
+  </section>
+
+  <!-- HIGHLIGHTS -->
+  <div class="highlights-wrap">
+    <div class="highlights">
+      <div class="highlight-card">
+        <div class="highlight-number">$25B</div>
+        <div class="highlight-label">BCG grew from $12B to $25B after the global rebrand I co-led</div>
+      </div>
+      <div class="highlight-card">
+        <div class="highlight-number">6M</div>
+        <div class="highlight-label">players for one Adidas game, built in 4 weeks</div>
+      </div>
+      <div class="highlight-card">
+        <div class="highlight-number">18M</div>
+        <div class="highlight-label">users scaled at EyeEm as CDO — from 1M</div>
+      </div>
+      <div class="highlight-card">
+        <div class="highlight-number">80%</div>
+        <div class="highlight-label">success rate across 5 startups as founding designer</div>
+      </div>
+    </div>
   </div>
 
-  <!-- EyeEm -->
-  <div class="project">
-    <h3>EyeEm</h3>
-    <div class="meta">Chief Design Officer • 2013–2016</div>
-    <p>Led brand strategy and product design through hypergrowth from <span class="number">1M to 18M users</span>.</p>
-    <ul>
-      <li>Brand architecture and design systems scaling with company velocity</li>
-      <li>Experiential activations and community events building loyalty beyond digital product</li>
-      <li>Physical brand presence and partnerships amplifying platform growth</li>
-    </ul>
+  <div class="divider" style="max-width:960px;margin:0 auto;"></div>
+
+  <!-- EXPERIENCE -->
+  <section id="experience">
+    <p class="section-label">Selected Work</p>
+    <div class="experience-list">
+
+      <!-- TOGETHER -->
+      <div class="exp-item">
+        <div class="exp-meta">2021 – 2025</div>
+        <div>
+          <div class="exp-company">Together <span style="color:var(--muted-light);font-weight:300;font-size:13px;">(Acquired by recoupling)</span></div>
+          <div class="exp-role">Founder & CPO</div>
+          <div class="exp-desc">Voice-first AI couple counseling platform. 4 years shipping production AI in one of the hardest use cases. Acquired 2025.</div>
+          <ul class="exp-bullets">
+            <li>Built brand and product from scratch for an AI-native platform</li>
+            <li>Tested Claude, ChatGPT, ElevenLabs against each other in production — systematic comparison of capabilities in high-stakes contexts where mistakes matter</li>
+            <li>Designed complete user experience for relationship dynamics, emotional nuance, real-time empathy</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- BCG -->
+      <div class="exp-item">
+        <div class="exp-meta">2017 – 2021</div>
+        <div>
+          <div class="exp-company">Boston Consulting Group (BCG)</div>
+          <div class="exp-role">Global Creative Director</div>
+          <div class="exp-desc">BCG grew from $12B to $25B after the global rebrand I co-led. Established and scaled a global experiential creative function from scratch.</div>
+          <ul class="exp-bullets">
+            <li>Corporate rebrand: purpose, brand architecture, and visual identity scaling globally across 90+ countries</li>
+            <li>Davos activations 2018–2021 — flagship conference presence strategy</li>
+            <li>Built trade show and event design methodology maintaining craft at scale</li>
+            <li>TED@BCG installation: "Circular Escape", electronic sound installation (<a href="#" target="_blank">Watch TED Talk</a>)</li>
+            <li>Vendor and agency management frameworks enabling distributed creative teams</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ATTITUDE -->
+      <div class="exp-item">
+        <div class="exp-meta">2019 – 2022</div>
+        <div>
+          <div class="exp-company">Attitude Incubator</div>
+          <div class="exp-role">Founder & Partner</div>
+          <div class="exp-desc">Tailor-made incubator program building brand infrastructure and event strategies across portfolio companies. Created frameworks that worked across multiple contexts and growth stages.</div>
+          <ul class="exp-bullets">
+            <li>Founded/co-founded 5 companies with 80% success rate: PAMONO, DECOVRY, Tweek, EAT</li>
+            <li>Learned patterns of brand building from pre-seed through growth</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- CODE UNIVERSITY -->
+      <div class="exp-item">
+        <div class="exp-meta">2019 – 2022</div>
+        <div>
+          <div class="exp-company">CODE University of Applied Sciences</div>
+          <div class="exp-role">Lecturer</div>
+          <div class="exp-desc">Taught brand strategy and experiential design for 3 years. Systematized frameworks others could execute.</div>
+        </div>
+      </div>
+
+      <!-- EYEEM -->
+      <div class="exp-item">
+        <div class="exp-meta">2013 – 2016</div>
+        <div>
+          <div class="exp-company">EyeEm</div>
+          <div class="exp-role">Chief Design Officer</div>
+          <div class="exp-desc">EyeEm grew from 1M to 18M users during my time as CDO. Led brand strategy and product design through the company's most critical growth phase.</div>
+          <ul class="exp-bullets">
+            <li>Brand architecture and design systems scaling with company velocity</li>
+            <li>Experiential activations and community events building loyalty beyond the digital product</li>
+            <li>Physical brand presence and partnerships amplifying platform growth</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- EARLIER -->
+      <div class="exp-item">
+        <div class="exp-meta">2007 – 2013</div>
+        <div>
+          <div class="exp-company">Agency & Corporate Career</div>
+          <div class="exp-role">Art Director → Creative Director</div>
+          <div class="exp-desc">WPP, BBDO, Razorfish, OgilvyOne, Deutsche Telekom. Built the foundation in creative direction, brand strategy, and interactive design.</div>
+          <ul class="exp-bullets">
+            <li>Adidas Asia "The Rook" (via Ogilvy, 2007) — interactive game reaching 6M players in 4 weeks</li>
+            <li>Deutsche Telekom: Led innovation department designing future-facing brand experiences</li>
+            <li>15+ international awards including D&amp;AD, One Show, Asia Pacific Creative Awards</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="tags">
+      <span class="tag">Product Strategy</span>
+      <span class="tag">Brand Architecture</span>
+      <span class="tag">Design Systems</span>
+      <span class="tag">AI Product Design</span>
+      <span class="tag">Narrative & Positioning</span>
+      <span class="tag">Experiential Design</span>
+      <span class="tag">Creative Direction</span>
+      <span class="tag">CPO</span>
+      <span class="tag">CDO</span>
+      <span class="tag">Game Design</span>
+      <span class="tag">Startup Leadership</span>
+    </div>
+  </section>
+
+  <!-- RECOGNITION STRIP -->
+  <div class="recognition">
+    <div class="recognition-inner">
+      <div class="recognition-item"><a href="#" target="_blank">TED Talk — "Circular Escape"</a></div>
+      <div class="recognition-item">Published: "A Touch of Code" — Gestalten Verlag</div>
+      <div class="recognition-item">15+ Awards — D&amp;AD · One Show · Asia Pacific</div>
+      <div class="recognition-item">Berlin · location-flexible</div>
+    </div>
   </div>
 
-  <!-- Adidas -->
-  <div class="project">
-    <h3>Adidas Asia "The Rook"</h3>
-    <div class="meta">Creative Director (Ogilvy) • 2007</div>
-    <p>Interactive game and brand activation reaching <span class="number">6M players in 4 weeks</span>. Pioneering experiential work combining physical installation and digital before it was standard practice.</p>
-  </div>
+  <div class="divider" style="max-width:960px;margin:0 auto;"></div>
 
-  <!-- Attitude -->
-  <div class="project">
-    <h3>Attitude Incubator</h3>
-    <div class="meta">Founder, Partner • 2010–2013</div>
-    <p>Built brand infrastructure and event strategies across portfolio companies. Created frameworks that worked across multiple contexts and stages.</p>
-  </div>
+  <!-- WHY AI -->
+  <section id="why-ai">
+    <p class="section-label">Why frontier AI</p>
+    <div class="why-grid">
+      <div class="why-item">
+        <h3>I've already built in AI</h3>
+        <p>
+          Together wasn't an experiment — it was a four-year product
+          built on conversational AI, shipped to real users in one of the
+          hardest use cases imaginable. I've tested Claude, ChatGPT, and
+          ElevenLabs against each other in production. I know what it means
+          to make AI feel human, useful, and trustworthy.
+        </p>
+      </div>
+      <div class="why-item">
+        <h3>Design at this scale is rare</h3>
+        <p>
+          Few people have led design at both a global consulting firm growing
+          to $25B and an 18M-user consumer product. That range — enterprise
+          rigor and consumer intuition — matters when AI products need to
+          earn trust from everyone.
+        </p>
+      </div>
+      <div class="why-item">
+        <h3>I care about the question, not just the answer</h3>
+        <p>
+          The most important design work in AI isn't the interface.
+          It's the values embedded in how systems communicate, what
+          they surface, and what they don't. I've spent years thinking
+          about exactly this.
+        </p>
+      </div>
+      <div class="why-item">
+        <h3>I bring taste as infrastructure</h3>
+        <p>
+          At BCG I built taste into a global system across 90 countries.
+          At EyeEm it became a growth engine. At Together it was the
+          product people wanted to acquire. Taste isn't decoration —
+          it's a strategic asset, and I know how to operationalize it.
+        </p>
+      </div>
+    </div>
+  </section>
 
-  <!-- CODE -->
-  <div class="project">
-    <h3>CODE University</h3>
-    <div class="meta">Lecturer • 2019–2022</div>
-    <p>Taught brand strategy and experiential design for 3 years. Systematized frameworks others could execute.</p>
-  </div>
+  <div class="divider" style="max-width:960px;margin:0 auto;"></div>
 
-  <!-- Startups -->
-  <div class="project">
-    <h3>Founding Designer / Creative Director</h3>
-    <div class="meta">Multiple Startups • 2007–2013</div>
-    <p>Founded/co-founded 5 companies with <span class="number">80% success rate</span>: PAMONO, DECOVRY, Tweek, EAT. Learned patterns of brand building from pre-seed through growth.</p>
-  </div>
+  <!-- CONTACT -->
+  <section id="contact" class="contact-section" style="max-width:100%;padding-bottom:0;">
+    <div style="max-width:960px;margin:0 auto;padding:100px 48px 100px;">
+      <div class="contact-grid">
+        <div>
+          <p class="section-label">Let's talk</p>
+          <p class="contact-headline">
+            Ready to bring<br>taste to the frontier.
+          </p>
+          <p class="contact-sub">
+            Berlin-based, equally comfortable in<br>San Francisco or New York.
+          </p>
+        </div>
+        <div class="contact-links">
+          <a href="mailto:frank@thisisobvious.com" class="contact-link">
+            <span>frank@thisisobvious.com</span>
+            <span class="contact-link-arrow">↗</span>
+          </a>
+          <a href="https://www.linkedin.com/in/frankmuellerpierstorff" target="_blank" rel="noopener" class="contact-link">
+            <span>LinkedIn</span>
+            <span class="contact-link-arrow">↗</span>
+          </a>
+          <a href="https://thisisobvious.com" target="_blank" rel="noopener" class="contact-link">
+            <span>thisisobvious.com</span>
+            <span class="contact-link-arrow">↗</span>
+          </a>
+          <a href="https://frankmuellerpierstorff.substack.com" target="_blank" rel="noopener" class="contact-link">
+            <span>Substack</span>
+            <span class="contact-link-arrow">↗</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
 
-  <!-- Agency -->
-  <div class="project">
-    <h3>Agency Career</h3>
-    <div class="meta">Creative Director / Art Director • 2001–2013</div>
-    <ul>
-      <li>Deutsche Telekom: Led innovation department designing future-facing brand experiences</li>
-      <li>IBM iX, WPP, BBDO, Razorfish: Built foundation in creative direction, brand strategy, interactive design</li>
-      <li><span class="number">15+ international awards</span> including D&AD, One Show, Asia Pacific Creative Awards</li>
-      <li>10+ years freelancer: started projects solo, built teams when they scaled</li>
-    </ul>
-  </div>
-
-  <h2>Recognition</h2>
-  
-  <div class="project">
-    <ul>
-      <li><strong>TED Talk:</strong> "Circular Escape", Electronic sound installation (<a href="https://www.youtube.com/watch?v=5-GyRSds9co" target="_blank">Watch</a>)</li>
-      <li><strong>Published:</strong> "A Touch of Code: Interactive Installations and Experiences" (Gestalten Verlag)</li>
-      <li><strong>Awards:</strong> 15+ international including D&AD, One Show, Asia Pacific Creative Awards</li>
-    </ul>
-  </div>
-
-  <h2>Currently</h2>
-  
-  <div class="project">
-    <ul>
-      <li><strong>Obvious:</strong> Founder, working with founders on brand strategy and positioning</li>
-      <li><strong>BlueYard Capital & Boost Capital:</strong> Advisor, Brand + Product</li>
-      <li>Berlin-based, location-flexible, equally comfortable in San Francisco or New York</li>
-    </ul>
-  </div>
-
-  <!-- Footer -->
-  <div class="footer">
-    <a href="mailto:frank@thisisobvious.com">Get in touch</a> • 
-    <a href="https://www.linkedin.com/in/frankmuellerpierstorff" target="_blank">LinkedIn</a>
-  </div>
-
-</div>
+  <!-- FOOTER -->
+  <footer>
+    <p>Frank Müller-Pierstorff · Berlin · 2026</p>
+    <p>CPO · CDO · Ex-BCG · Ex-EyeEm</p>
+  </footer>
 
 </body>
 </html>
