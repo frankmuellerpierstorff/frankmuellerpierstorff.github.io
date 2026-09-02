@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 #
 # share — Kunden-Deliverable in den Showroom veroeffentlichen.
+# unshare — Deliverable wieder zurueckziehen (gleiches Script, anderer Name).
 #
-#   share [--to <typ>] [--force] <kunde> <datei-oder-ordner>
+#   share [--to <typ>] [--note <text>] [--status draft|final]
+#         [--expires <30d|2w|3m|YYYY-MM-DD>] [--force] <kunde> <datei-oder-ordner>
+#   unshare <kunde> <artefakt|slug>
 #
 # Erwartet einen Klon unter $SHOWROOM_ROOT/<kunde> (Default ~/showrooms/<kunde>),
 # Repo directional-showroom-<kunde>. Fehlt der Ordner, wird geklont — sofern das
 # Repo existiert, sonst Abbruch.
 #
-# Struktur: <typ>/<datum>-<slug>/ ist ein Artefakt-Ordner mit dem Original,
-# einem generierten index.html und .share-meta. Der Root-index.html listet alle
-# Artefakte, neueste oben.
+# Struktur:
+#   <typ>/<datum>-<slug>[-v<N>]/   Artefakt-Ordner: Original + index.html + .share-meta
+#   latest/<slug>/                 Redirect auf die neueste Version der Serie
+#   index.html                     Root-Index, neueste oben, ohne abgelaufene
 #
 # Kein Deploy — Vercel haengt am Repo und deployt beim Push.
 
@@ -25,22 +29,37 @@ SHOWROOM_REMOTE_BASE="${SHOWROOM_REMOTE_BASE:-}"
 FALLBACK_DIR="prototypes"
 DEFAULT_DIRS="decks html prototypes videos images docs"
 TODAY="$(date +%F)"
-TAB="$(printf '\t')"
+SEP="$(printf '\037')"   # Feldtrenner: kein IFS-Whitespace, leere Felder kollabieren nicht
 
-die()  { printf 'share: %s\n' "$*" >&2; exit 1; }
+MODE="share"
+case "$(basename "$0")" in unshare) MODE="unshare" ;; esac
+
+die()  { printf '%s: %s\n' "$MODE" "$*" >&2; exit 1; }
 info() { printf '%s\n' "$*" >&2; }
 
 usage() {
   cat >&2 <<'USAGE'
-usage: share [--to <typ>] [--force] <kunde> <datei-oder-ordner>
+usage: share [optionen] <kunde> <datei-oder-ordner>
+       unshare <kunde> <artefakt|slug>
 
-  --to <typ>   Typ-Ordner erzwingen (statt Endungs-Routing)
-  --force      Artefakt-Ordner gleichen Namens ersetzen
+  --to <typ>         Typ-Ordner erzwingen (statt Endungs-Routing)
+  --note <text>      Kontextzeile, erscheint im Index und auf der Artefakt-Seite
+  --status <s>       draft | review | final — Badge im Index
+  --expires <spec>   30d | 2w | 3m | 1y | YYYY-MM-DD
+  --force            gleichnamigen Artefakt-Ordner ersetzen statt neue Version
+  --keep-version     keine neue Version anlegen (nur mit --force sinnvoll)
 
 Routing (Default):  pdf pptx key -> decks | html -> html | mp4 mov webm -> videos
                     png jpg svg gif -> images | docx md xlsx csv txt -> docs
                     alles andere + Verzeichnisse -> prototypes
 Pro Kunde ueberschreibbar in .showroom-config:  ROUTE_zip=downloads
+
+Versionen: derselbe Dateiname landet als -v2, -v3 daneben; die alten bleiben
+erreichbar. latest/<slug>/ zeigt immer auf die neueste — diesen Link verschicken.
+
+Ablauf: abgelaufene Artefakte verschwinden aus Index und latest/. Die Dateien
+bleiben unter ihrer direkten URL erreichbar, bis sie per unshare entfernt oder
+von einer Auth-Schicht geblockt werden.
 
 env: SHOWROOM_ROOT (~/showrooms), SHOWROOM_OWNER, SHOWROOM_REPO_PREFIX,
      SHOWROOM_REMOTE_BASE
@@ -51,27 +70,84 @@ USAGE
 # ---------------------------------------------------------------- args
 
 FORCE=0
+KEEP_VERSION=0
 FORCE_DIR=""
+NOTE=""
+STATUS=""
+EXPIRES_SPEC=""
 ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    --to)     [ $# -ge 2 ] || usage; FORCE_DIR="$2"; shift 2 ;;
-    --to=*)   FORCE_DIR="${1#--to=}"; shift ;;
-    --force)  FORCE=1; shift ;;
-    -h|--help) usage ;;
-    --)       shift; while [ $# -gt 0 ]; do ARGS+=("$1"); shift; done ;;
-    -*)       die "unbekannte Option: $1" ;;
-    *)        ARGS+=("$1"); shift ;;
+    --to)        [ $# -ge 2 ] || usage; FORCE_DIR="$2"; shift 2 ;;
+    --to=*)      FORCE_DIR="${1#--to=}"; shift ;;
+    --note)      [ $# -ge 2 ] || usage; NOTE="$2"; shift 2 ;;
+    --note=*)    NOTE="${1#--note=}"; shift ;;
+    --status)    [ $# -ge 2 ] || usage; STATUS="$2"; shift 2 ;;
+    --status=*)  STATUS="${1#--status=}"; shift ;;
+    --expires)   [ $# -ge 2 ] || usage; EXPIRES_SPEC="$2"; shift 2 ;;
+    --expires=*) EXPIRES_SPEC="${1#--expires=}"; shift ;;
+    --force)     FORCE=1; shift ;;
+    --keep-version) KEEP_VERSION=1; shift ;;
+    -h|--help)   usage ;;
+    --)          shift; while [ $# -gt 0 ]; do ARGS+=("$1"); shift; done ;;
+    -*)          die "unbekannte Option: $1" ;;
+    *)           ARGS+=("$1"); shift ;;
   esac
 done
 [ "${#ARGS[@]}" -eq 2 ] || usage
 
 KUNDE="${ARGS[0]}"
-SRC="${ARGS[1]%/}"
-[ -e "$SRC" ] || die "gibt es nicht: $SRC"
+TARGET_ARG="${ARGS[1]%/}"
+
+case "$STATUS" in ""|draft|review|final) ;; *) die "--status: draft, review oder final" ;; esac
 
 REPO_NAME="${SHOWROOM_REPO_PREFIX}${KUNDE}"
 REPO="$SHOWROOM_ROOT/$KUNDE"
+
+# ---------------------------------------------------------------- helpers
+
+html_escape() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'; }
+url_escape()  { sed 's/%/%25/g; s/ /%20/g; s/"/%22/g; s/#/%23/g; s/?/%3F/g; s/&/%26/g'; }
+
+slugify() {
+  printf '%s' "$1" \
+    | sed 's/ä/ae/g; s/ö/oe/g; s/ü/ue/g; s/Ä/Ae/g; s/Ö/Oe/g; s/Ü/Ue/g; s/ß/ss/g' \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed 's/[^a-z0-9]\{1,\}/-/g; s/^-\{1,\}//; s/-\{1,\}$//'
+}
+
+date_add() { # date_add <30d|2w|3m|1y|YYYY-MM-DD>
+  local spec="$1" n unit
+  case "$spec" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) printf '%s' "$spec"; return 0 ;;
+  esac
+  n="${spec%[dwmy]}"
+  unit="${spec#"$n"}"
+  case "$n" in ''|*[!0-9]*) return 1 ;; esac
+  case "$unit" in
+    d) date -d "+$n days"   +%F 2>/dev/null || date -v"+${n}d" +%F 2>/dev/null ;;
+    w) date -d "+$n weeks"  +%F 2>/dev/null || date -v"+${n}w" +%F 2>/dev/null ;;
+    m) date -d "+$n months" +%F 2>/dev/null || date -v"+${n}m" +%F 2>/dev/null ;;
+    y) date -d "+$n years"  +%F 2>/dev/null || date -v"+${n}y" +%F 2>/dev/null ;;
+    *) return 1 ;;
+  esac
+}
+
+meta_get() { # meta_get ARTEFAKT_PFAD KEY
+  [ -f "$1/.share-meta" ] || return 0
+  sed -n "s/^$2=//p" "$1/.share-meta" | tail -n 1
+}
+
+route_for_ext() {
+  case "$1" in
+    pdf|pptx|ppt|key|keynote)      echo decks ;;
+    html|htm)                      echo html ;;
+    mp4|mov|webm|m4v)              echo videos ;;
+    png|jpg|jpeg|gif|svg|webp)     echo images ;;
+    docx|doc|md|txt|rtf|xlsx|csv)  echo docs ;;
+    *)                             echo "$FALLBACK_DIR" ;;
+  esac
+}
 
 # ---------------------------------------------------------------- repo
 
@@ -96,10 +172,11 @@ clone_repo() {
   done
   die "Repo '${REPO_NAME}' nicht erreichbar (Owner: ${SHOWROOM_OWNER}).
      Erst anlegen:  gh repo create ${SHOWROOM_OWNER}/${REPO_NAME} --private
-     Dann nochmal:  share ${KUNDE} ${SRC}"
+     Dann nochmal:  ${MODE} ${KUNDE} ${TARGET_ARG}"
 }
 
 if [ ! -d "$REPO" ]; then
+  [ "$MODE" = "unshare" ] && die "kein Klon unter $REPO — nichts zurueckzuziehen."
   clone_repo
 elif [ ! -d "$REPO/.git" ]; then
   die "$REPO existiert, ist aber kein git-Repo."
@@ -117,115 +194,158 @@ cfg_get() { # cfg_get KEY
     | sed 's/^"//; s/"$//; s/^'"'"'//; s/'"'"'$//; s/[[:space:]]*$//'
 }
 
-# ---------------------------------------------------------------- helpers
-
-html_escape() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'; }
-url_escape()  { sed 's/%/%25/g; s/ /%20/g; s/"/%22/g; s/#/%23/g; s/?/%3F/g; s/&/%26/g'; }
-
-slugify() {
-  printf '%s' "$1" \
-    | sed 's/ä/ae/g; s/ö/oe/g; s/ü/ue/g; s/Ä/Ae/g; s/Ö/Oe/g; s/Ü/Ue/g; s/ß/ss/g' \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed 's/[^a-z0-9]\{1,\}/-/g; s/^-\{1,\}//; s/-\{1,\}$//'
+index_dirs() {
+  {
+    printf '%s\n' $DEFAULT_DIRS
+    [ -n "${TYPE_DIR:-}" ] && printf '%s\n' "$TYPE_DIR"
+    if [ -f "$CFG" ]; then
+      sed -n 's|^[[:space:]]*ROUTE_[A-Za-z0-9_]\{1,\}[[:space:]]*=[[:space:]]*||p' "$CFG" \
+        | tr -d '"'"'" | sed 's|/*$||'
+      cfg_get INDEX_DIRS | tr ' ,' '\n\n'
+    fi
+    # Jeder Ordner, der bereits Artefakte enthaelt, bleibt im Index.
+    find "$REPO" -mindepth 3 -maxdepth 3 -name .share-meta -not -path '*/.git/*' 2>/dev/null \
+      | sed "s|^$REPO/||" | sed 's|/[^/]*/\.share-meta$||'
+  } | sed '/^$/d' | awk '!seen[$0]++'
 }
 
-route_for_ext() {
-  case "$1" in
-    pdf|pptx|ppt|key|keynote)      echo decks ;;
-    html|htm)                      echo html ;;
-    mp4|mov|webm|m4v)              echo videos ;;
-    png|jpg|jpeg|gif|svg|webp)     echo images ;;
-    docx|doc|md|txt|rtf|xlsx|csv)  echo docs ;;
-    *)                             echo "$FALLBACK_DIR" ;;
-  esac
+# ---------------------------------------------------------------- inventar
+
+# TSV: datum \t typ \t ordner \t slug \t version \t status \t abgelaufen \t titel \t notiz
+collect_entries() {
+  local dir path folder d slug ver status exp expired title note
+  for dir in $(index_dirs); do
+    [ -d "$REPO/$dir" ] || continue
+    for path in "$REPO/$dir"/*; do
+      [ -e "$path" ] || continue
+      folder="$(basename "$path")"
+      case "$folder" in .*) continue ;; esac
+      if [ -d "$path" ]; then
+        title="$(meta_get "$path" title)";   [ -n "$title" ] || title="$folder"
+        d="$(meta_get "$path" date)"
+        slug="$(meta_get "$path" slug)"
+        ver="$(meta_get "$path" version)";   [ -n "$ver" ] || ver=1
+        status="$(meta_get "$path" status)"
+        note="$(meta_get "$path" note)"
+        exp="$(meta_get "$path" expires)"
+      else
+        title="$folder"; d=""; slug=""; ver=1; status=""; note=""; exp=""
+      fi
+      if [ -z "$d" ]; then
+        case "$folder" in
+          [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*) d="$(printf '%s' "$folder" | cut -c1-10)" ;;
+          *) d="$(date -r "$path" +%F 2>/dev/null || printf '%s' "$TODAY")" ;;
+        esac
+      fi
+      expired=0
+      if [ -n "$exp" ] && [ "$exp" \< "$TODAY" ]; then expired=1; fi
+      printf "%s\037%s\037%s\037%s\037%s\037%s\037%s\037%s\037%s\n" \
+        "$d" "$dir" "$folder" "$slug" "$ver" "$status" "$expired" "$title" "$note"
+    done
+  done | sort -t"$SEP" -k1,1r -k5,5nr -k8,8
 }
 
-meta_get() { # meta_get ARTEFAKT_PFAD KEY
-  [ -f "$1/.share-meta" ] || return 0
-  sed -n "s/^$2=//p" "$1/.share-meta" | tail -n 1
-}
+# ---------------------------------------------------------------- share
 
-# ---------------------------------------------------------------- routing
+do_share() {
+  local SRC="$TARGET_ARG" BASE EXT STEM OVERRIDE SLUG VERSION ART ART_PATH
+  local FILE_NAME HREF TITLE_ESC VIEWER ENTRYFILE ENTRYREL ENTRYHREF EXPIRES
 
-BASE="$(basename "$SRC")"
-if [ -d "$SRC" ]; then
-  EXT=""
-  STEM="$BASE"
-else
-  EXT="$(printf '%s' "${BASE##*.}" | tr '[:upper:]' '[:lower:]')"
-  if [ "$EXT" = "$(printf '%s' "$BASE" | tr '[:upper:]' '[:lower:]')" ]; then
+  [ -e "$SRC" ] || die "gibt es nicht: $SRC"
+  BASE="$(basename "$SRC")"
+
+  if [ -d "$SRC" ]; then
     EXT=""; STEM="$BASE"
   else
-    STEM="${BASE%.*}"
+    EXT="$(printf '%s' "${BASE##*.}" | tr '[:upper:]' '[:lower:]')"
+    if [ "$EXT" = "$(printf '%s' "$BASE" | tr '[:upper:]' '[:lower:]')" ]; then
+      EXT=""; STEM="$BASE"
+    else
+      STEM="${BASE%.*}"
+    fi
   fi
-fi
 
-if [ -n "$FORCE_DIR" ]; then
-  TYPE_DIR="${FORCE_DIR%/}"
-elif [ -d "$SRC" ]; then
-  TYPE_DIR="$FALLBACK_DIR"
-else
-  OVERRIDE=""
-  [ -n "$EXT" ] && OVERRIDE="$(cfg_get "ROUTE_$EXT")"
-  TYPE_DIR="${OVERRIDE:-$(route_for_ext "$EXT")}"
-  TYPE_DIR="${TYPE_DIR%/}"
-fi
+  if [ -n "$FORCE_DIR" ]; then
+    TYPE_DIR="${FORCE_DIR%/}"
+  elif [ -d "$SRC" ]; then
+    TYPE_DIR="$FALLBACK_DIR"
+  else
+    OVERRIDE=""
+    [ -n "$EXT" ] && OVERRIDE="$(cfg_get "ROUTE_$EXT")"
+    TYPE_DIR="${OVERRIDE:-$(route_for_ext "$EXT")}"
+    TYPE_DIR="${TYPE_DIR%/}"
+  fi
 
-SLUG="$(slugify "$STEM")"
-[ -n "$SLUG" ] || SLUG="deliverable"
-case "$SLUG" in
-  [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*) ART="$SLUG" ;;
-  *) ART="${TODAY}-${SLUG}" ;;
-esac
+  EXPIRES=""
+  if [ -n "$EXPIRES_SPEC" ]; then
+    EXPIRES="$(date_add "$EXPIRES_SPEC")" \
+      || die "--expires: 30d, 2w, 3m, 1y oder YYYY-MM-DD"
+  fi
 
-ART_PATH="$REPO/$TYPE_DIR/$ART"
-if [ -e "$ART_PATH" ] && [ "$FORCE" -eq 0 ]; then
-  die "existiert schon: $TYPE_DIR/$ART/  (--force zum Ersetzen)"
-fi
+  SLUG="$(slugify "$STEM")"
+  [ -n "$SLUG" ] || SLUG="deliverable"
 
-# ---------------------------------------------------------------- artefakt anlegen
+  # Version = hoechste bestehende Version derselben Serie + 1.
+  VERSION=1
+  if [ "$KEEP_VERSION" -eq 0 ]; then
+    local maxv=0 d dir folder s v rest
+    while IFS="$SEP" read -r d dir folder s v rest; do
+      [ "$s" = "$SLUG" ] || continue
+      case "$v" in ''|*[!0-9]*) v=1 ;; esac
+      [ "$v" -gt "$maxv" ] && maxv="$v"
+    done < <(collect_entries)
+    [ "$maxv" -gt 0 ] && VERSION=$((maxv + 1))
+  fi
 
-rm -rf "$ART_PATH"
-mkdir -p "$ART_PATH"
+  if [ "$VERSION" -gt 1 ]; then
+    ART="${TODAY}-${SLUG}-v${VERSION}"
+  else
+    ART="${TODAY}-${SLUG}"
+  fi
+  ART_PATH="$REPO/$TYPE_DIR/$ART"
 
-if [ -d "$SRC" ]; then
-  # Verzeichnis 1:1 uebernehmen, inkl. Unterordner.
-  cp -R "$SRC/." "$ART_PATH/"
-  if [ ! -f "$ART_PATH/index.html" ]; then
-    # Kein Einstieg im Root: auf die erste HTML weiterleiten, Struktur unangetastet.
-    ENTRYFILE="$(find "$ART_PATH" -maxdepth 2 -type f -name '*.html' 2>/dev/null | sort | head -n 1)"
-    if [ -n "$ENTRYFILE" ]; then
-      ENTRYREL="${ENTRYFILE#$ART_PATH/}"
-      ENTRYHREF="$(printf '%s' "$ENTRYREL" | url_escape | html_escape)"
-      cat > "$ART_PATH/index.html" <<REDIR
+  if [ -e "$ART_PATH" ] && [ "$FORCE" -eq 0 ]; then
+    die "existiert schon: $TYPE_DIR/$ART/  (--force zum Ersetzen)"
+  fi
+
+  rm -rf "$ART_PATH"
+  mkdir -p "$ART_PATH"
+
+  if [ -d "$SRC" ]; then
+    cp -R "$SRC/." "$ART_PATH/"
+    if [ ! -f "$ART_PATH/index.html" ]; then
+      ENTRYFILE="$(find "$ART_PATH" -maxdepth 2 -type f -name '*.html' 2>/dev/null | sort | head -n 1)"
+      if [ -n "$ENTRYFILE" ]; then
+        ENTRYREL="${ENTRYFILE#"$ART_PATH"/}"
+        ENTRYHREF="$(printf '%s' "$ENTRYREL" | url_escape | html_escape)"
+        cat > "$ART_PATH/index.html" <<REDIR
 <!doctype html>
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="0; url=${ENTRYHREF}">
 <title>$(printf '%s' "$BASE" | html_escape)</title>
 <p><a href="${ENTRYHREF}">Weiter zu ${ENTRYHREF}</a></p>
 REDIR
+      fi
     fi
+    FILE_NAME=""
+  elif [ "$EXT" = "html" ] || [ "$EXT" = "htm" ]; then
+    cp "$SRC" "$ART_PATH/index.html"
+    FILE_NAME="index.html"
+  else
+    cp "$SRC" "$ART_PATH/$BASE"
+    FILE_NAME="$BASE"
   fi
-  FILE_NAME=""
-elif [ "$EXT" = "html" ] || [ "$EXT" = "htm" ]; then
-  cp "$SRC" "$ART_PATH/index.html"
-  FILE_NAME="index.html"
-else
-  cp "$SRC" "$ART_PATH/$BASE"
-  FILE_NAME="$BASE"
-fi
 
-# Wrapper-index.html, wenn das Artefakt keinen eigenen Einstieg hat.
-if [ ! -f "$ART_PATH/index.html" ]; then
-  HREF="$(printf '%s' "$FILE_NAME" | url_escape | html_escape)"
-  TITLE_ESC="$(printf '%s' "$BASE" | html_escape)"
-  case "$EXT" in
-    pdf)   VIEWER="<embed class=\"view\" src=\"$HREF\" type=\"application/pdf\">" ;;
-    png|jpg|jpeg|gif|svg|webp) VIEWER="<img class=\"view\" src=\"$HREF\" alt=\"$TITLE_ESC\">" ;;
-    mp4|mov|webm|m4v) VIEWER="<video class=\"view\" src=\"$HREF\" controls playsinline></video>" ;;
-    *) VIEWER="" ;;
-  esac
-  cat > "$ART_PATH/index.html" <<ART
+  if [ ! -f "$ART_PATH/index.html" ]; then
+    HREF="$(printf '%s' "$FILE_NAME" | url_escape | html_escape)"
+    TITLE_ESC="$(printf '%s' "$BASE" | html_escape)"
+    case "$EXT" in
+      pdf) VIEWER="<embed class=\"view\" src=\"$HREF\" type=\"application/pdf\">" ;;
+      png|jpg|jpeg|gif|svg|webp) VIEWER="<img class=\"view\" src=\"$HREF\" alt=\"$TITLE_ESC\">" ;;
+      mp4|mov|webm|m4v) VIEWER="<video class=\"view\" src=\"$HREF\" controls playsinline></video>" ;;
+      *) VIEWER="<p class=\"empty\">Datei per Download oeffnen.</p>" ;;
+    esac
+    cat > "$ART_PATH/index.html" <<ART
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -242,7 +362,9 @@ if [ ! -f "$ART_PATH/index.html" ]; then
          font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
   header { display:flex; gap:1rem; align-items:baseline; flex-wrap:wrap;
            padding:1.1rem 1.5rem; border-bottom:1px solid var(--line); }
-  h1 { font-size:1rem; font-weight:600; margin:0; flex:1; word-break:break-word; }
+  h1 { font-size:1rem; font-weight:600; margin:0; word-break:break-word; }
+  .meta { flex:1; min-width:12rem; }
+  .note { color:var(--muted); font-size:.85rem; margin:.15rem 0 0; }
   .date { color:var(--muted); font-size:.85rem; font-variant-numeric:tabular-nums; }
   a.dl { color:inherit; font-size:.85rem; border:1px solid var(--line);
          border-radius:2rem; padding:.3rem .8rem; text-decoration:none; white-space:nowrap; }
@@ -254,71 +376,101 @@ if [ ! -f "$ART_PATH/index.html" ]; then
 </style>
 <header>
   <a class="back" href="../../">&larr; Showroom</a>
-  <h1>${TITLE_ESC}</h1>
-  <span class="date">${TODAY}</span>
+  <span class="meta">
+    <h1>${TITLE_ESC}</h1>
+    $([ -n "$NOTE" ] && printf '<p class="note">%s</p>' "$(printf '%s' "$NOTE" | html_escape)")
+  </span>
+  <span class="date">${TODAY}$([ "$VERSION" -gt 1 ] && printf ' · v%s' "$VERSION")</span>
   <a class="dl" href="${HREF}" download>Download</a>
 </header>
 <main>
-  ${VIEWER:-<p class=\"empty\">Datei per Download oeffnen.</p>}
+  ${VIEWER}
 </main>
 ART
-fi
+  fi
 
-{
-  printf 'title=%s\n' "$BASE"
-  printf 'date=%s\n'  "$TODAY"
-  printf 'type=%s\n'  "$TYPE_DIR"
-  [ -n "${FILE_NAME:-}" ] && printf 'file=%s\n' "$FILE_NAME"
-  true
-} > "$ART_PATH/.share-meta"
+  {
+    printf 'title=%s\n'   "$BASE"
+    printf 'date=%s\n'    "$TODAY"
+    printf 'type=%s\n'    "$TYPE_DIR"
+    printf 'slug=%s\n'    "$SLUG"
+    printf 'version=%s\n' "$VERSION"
+    [ -n "$FILE_NAME" ] && printf 'file=%s\n'    "$FILE_NAME"
+    [ -n "$NOTE" ]      && printf 'note=%s\n'    "$NOTE"
+    [ -n "$STATUS" ]    && printf 'status=%s\n'  "$STATUS"
+    [ -n "$EXPIRES" ]   && printf 'expires=%s\n' "$EXPIRES"
+    true
+  } > "$ART_PATH/.share-meta"
 
-info "-> $TYPE_DIR/$ART/  ($BASE)"
+  RESULT_PATH="$TYPE_DIR/$ART"
+  RESULT_SLUG="$SLUG"
+  RESULT_TITLE="$BASE"
+  RESULT_VERSION="$VERSION"
+  RESULT_EXPIRES="$EXPIRES"
+  info "-> $RESULT_PATH/  ($BASE, v$VERSION)"
+}
+
+# ---------------------------------------------------------------- unshare
+
+do_unshare() {
+  local want="${TARGET_ARG#./}" d dir folder slug ver rest hit=""
+  want="${want%/}"
+  while IFS="$SEP" read -r d dir folder slug ver rest; do
+    if [ "$want" = "$dir/$folder" ] || [ "$want" = "$folder" ]; then
+      hit="$dir/$folder"; break
+    fi
+  done < <(collect_entries)
+  if [ -z "$hit" ]; then
+    while IFS="$SEP" read -r d dir folder slug ver rest; do
+      if [ "$want" = "$slug" ]; then hit="$dir/$folder"; break; fi
+    done < <(collect_entries)
+  fi
+  [ -n "$hit" ] || die "kein Artefakt gefunden: $want
+     Vorhanden:
+$(collect_entries | cut -d"$SEP" -f2,3 | tr "$SEP" '/' | sed 's|^|       |')"
+
+  RESULT_TITLE="$(meta_get "$REPO/$hit" title)"
+  [ -n "$RESULT_TITLE" ] || RESULT_TITLE="$(basename "$hit")"
+  rm -rf "${REPO:?}/$hit"
+  RESULT_PATH="$hit"
+  info "entfernt: $hit/  ($RESULT_TITLE)"
+}
+
+case "$MODE" in
+  share)   do_share ;;
+  unshare) do_unshare ;;
+esac
+
+# ---------------------------------------------------------------- latest/
+
+write_latest() {
+  local d dir folder slug ver status expired title note seen="" depth
+  rm -rf "$REPO/latest"
+  while IFS="$SEP" read -r d dir folder slug ver status expired title note; do
+    [ -n "$slug" ] || continue
+    [ "$expired" = "0" ] || continue
+    case " $seen " in *" $slug "*) continue ;; esac
+    seen="$seen $slug"
+    mkdir -p "$REPO/latest/$slug"
+    depth="../../$dir/$folder/"
+    cat > "$REPO/latest/$slug/index.html" <<LATEST
+<!doctype html>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<meta http-equiv="refresh" content="0; url=$(printf '%s' "$depth" | url_escape | html_escape)">
+<title>$(printf '%s' "$title" | html_escape)</title>
+<p><a href="$(printf '%s' "$depth" | url_escape | html_escape)">$(printf '%s' "$title" | html_escape)</a></p>
+LATEST
+  done < <(collect_entries)
+  [ -d "$REPO/latest" ] || return 0
+}
 
 # ---------------------------------------------------------------- root index
 
-index_dirs() {
-  {
-    printf '%s\n' $DEFAULT_DIRS
-    printf '%s\n' "$TYPE_DIR"
-    if [ -f "$CFG" ]; then
-      sed -n 's|^[[:space:]]*ROUTE_[A-Za-z0-9_]\{1,\}[[:space:]]*=[[:space:]]*||p' "$CFG" \
-        | tr -d '"'"'" | sed 's|/*$||'
-      cfg_get INDEX_DIRS | tr ' ,' '\n\n'
-    fi
-  } | sed '/^$/d' | awk '!seen[$0]++'
-}
-
-collect_entries() { # datum \t typ \t titel \t href
-  local dir path name d title href
-  for dir in $(index_dirs); do
-    [ -d "$REPO/$dir" ] || continue
-    for path in "$REPO/$dir"/*; do
-      [ -e "$path" ] || continue
-      name="$(basename "$path")"
-      case "$name" in .*) continue ;; esac
-      if [ -d "$path" ]; then
-        title="$(meta_get "$path" title)"
-        [ -n "$title" ] || title="$name"
-        d="$(meta_get "$path" date)"
-        href="$dir/$name/"
-      else
-        title="$name"
-        d=""
-        href="$dir/$name"
-      fi
-      if [ -z "$d" ]; then
-        case "$name" in
-          [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*) d="$(printf '%s' "$name" | cut -c1-10)" ;;
-          *) d="$(date -r "$path" +%F 2>/dev/null || printf '%s' "$TODAY")" ;;
-        esac
-      fi
-      printf '%s\t%s\t%s\t%s\n' "$d" "$dir" "$title" "$href"
-    done
-  done | sort -r -t "$TAB" -k1,1 -k3,3
-}
-
 write_index() {
-  local tmp="$REPO/.index.html.tmp" d dir title href count=0
+  local tmp="$REPO/.index.html.tmp"
+  local d dir folder slug ver status expired title note
+  local count=0 hidden=0 seen="" newest label href
   {
     cat <<HEAD
 <!doctype html>
@@ -343,11 +495,16 @@ write_index() {
   a.row { display:flex; gap:1rem; align-items:baseline; padding:.9rem .25rem;
           color:inherit; text-decoration:none; }
   a.row:hover { background:rgba(127,127,127,.08); }
+  a.row.old { opacity:.55; }
   .date { color:var(--muted); font-variant-numeric:tabular-nums; font-size:.85rem; min-width:6rem; }
-  .name { flex:1; word-break:break-word; }
+  .body { flex:1; min-width:0; }
+  .name { word-break:break-word; }
+  .note { color:var(--muted); font-size:.85rem; }
+  .tags { display:flex; gap:.35rem; flex-wrap:wrap; justify-content:flex-end; }
   .badge { color:var(--muted); font-size:.72rem; text-transform:uppercase;
            letter-spacing:.06em; border:1px solid var(--line); border-radius:2rem;
            padding:.1rem .55rem; white-space:nowrap; }
+  .badge.final { border-color:currentColor; color:var(--fg); }
   footer { margin-top:3rem; color:var(--muted); font-size:.8rem; }
 </style>
 <main>
@@ -355,31 +512,53 @@ write_index() {
 <p class="sub">Aktuelle Deliverables, neueste oben.</p>
 <ul>
 HEAD
-    while IFS="$TAB" read -r d dir title href; do
+    while IFS="$SEP" read -r d dir folder slug ver status expired title note; do
       [ -n "${title:-}" ] || continue
+      if [ "$expired" = "1" ]; then hidden=$((hidden + 1)); continue; fi
+      newest=1
+      if [ -n "$slug" ]; then
+        case " $seen " in *" $slug "*) newest=0 ;; *) seen="$seen $slug" ;; esac
+      fi
       count=$((count + 1))
-      printf '<li><a class="row" href="%s"><span class="date">%s</span><span class="name">%s</span><span class="badge">%s</span></a></li>\n' \
+      href="$dir/$folder/"
+      label="$(printf '%s' "$title" | html_escape)"
+      [ "${ver:-1}" -gt 1 ] 2>/dev/null && label="$label <span class=\"note\">v$ver</span>"
+      printf '<li><a class="row%s" href="%s"><span class="date">%s</span><span class="body"><span class="name">%s</span>' \
+        "$([ "$newest" -eq 0 ] && printf ' old')" \
         "$(printf '%s' "$href" | url_escape | html_escape)" \
-        "$(printf '%s' "$d"    | html_escape)" \
-        "$(printf '%s' "$title" | html_escape)" \
-        "$(printf '%s' "$dir"  | html_escape)"
+        "$(printf '%s' "$d" | html_escape)" \
+        "$label"
+      [ -n "$note" ] && printf '<br><span class="note">%s</span>' "$(printf '%s' "$note" | html_escape)"
+      printf '</span><span class="tags">'
+      [ -n "$status" ] && printf '<span class="badge %s">%s</span>' \
+        "$(printf '%s' "$status" | html_escape)" "$(printf '%s' "$status" | html_escape)"
+      printf '<span class="badge">%s</span>' "$(printf '%s' "$dir" | html_escape)"
+      printf '</span></a></li>\n'
     done < <(collect_entries)
     [ "$count" -eq 0 ] && printf '<li><a class="row"><span class="name">Noch nichts veroeffentlicht.</span></a></li>\n'
-    cat <<FOOT
-</ul>
-<footer>Generiert am ${TODAY} von <code>share</code>.</footer>
-</main>
-FOOT
+    printf '</ul>\n<footer>Generiert am %s von <code>share</code>.' "$TODAY"
+    [ "$hidden" -gt 0 ] && printf ' %s abgelaufene(s) Artefakt(e) ausgeblendet.' "$hidden"
+    printf '</footer>\n</main>\n'
   } > "$tmp"
   mv "$tmp" "$REPO/index.html"
 }
 
+write_latest
 write_index
 
 # ---------------------------------------------------------------- README
 
 README="$REPO/README.md"
-ENTRY="- ${TODAY} — ${BASE} → \`${TYPE_DIR}/${ART}/\`"
+if [ "$MODE" = "share" ]; then
+  ENTRY="- ${TODAY} — ${RESULT_TITLE}"
+  [ "$RESULT_VERSION" -gt 1 ] && ENTRY="$ENTRY (v${RESULT_VERSION})"
+  [ -n "$STATUS" ] && ENTRY="$ENTRY [${STATUS}]"
+  ENTRY="$ENTRY → \`${RESULT_PATH}/\`"
+  [ -n "$NOTE" ] && ENTRY="$ENTRY — ${NOTE}"
+  [ -n "$RESULT_EXPIRES" ] && ENTRY="$ENTRY — laeuft ab ${RESULT_EXPIRES}"
+else
+  ENTRY="- ${TODAY} — zurueckgezogen: ${RESULT_TITLE} (\`${RESULT_PATH}/\`)"
+fi
 
 if [ ! -f "$README" ]; then
   printf '# %s\n\n## Aktuell\n\n%s\n' "$REPO_NAME" "$ENTRY" > "$README"
@@ -404,7 +583,7 @@ git -C "$REPO" add -A
 if git -C "$REPO" diff --cached --quiet; then
   info "nichts zu committen."
 else
-  git -C "$REPO" commit -m "share: ${BASE}" >&2
+  git -C "$REPO" commit -m "${MODE}: ${RESULT_TITLE}" >&2
 fi
 
 push_with_retry() {
@@ -429,14 +608,26 @@ case "$REMOTE" in
 esac
 REPO_URL="${REPO_URL%.git}"
 VERCEL_URL="$(cfg_get VERCEL_URL)"
+VERCEL_URL="${VERCEL_URL%/}"
 
 echo
-echo "veroeffentlicht: ${TYPE_DIR}/${ART}/"
+if [ "$MODE" = "unshare" ]; then
+  echo "zurueckgezogen: ${RESULT_PATH}/"
+else
+  echo "veroeffentlicht: ${RESULT_PATH}/  (v${RESULT_VERSION})"
+  [ -n "$RESULT_EXPIRES" ] && echo "laeuft ab:      ${RESULT_EXPIRES}"
+fi
 [ -n "$REPO_URL" ] && echo "repo:   $REPO_URL"
 if [ -n "$VERCEL_URL" ]; then
-  VERCEL_URL="${VERCEL_URL%/}"
   echo "live:   $VERCEL_URL"
-  echo "direkt: ${VERCEL_URL}/${TYPE_DIR}/${ART}/"
+  if [ "$MODE" = "share" ]; then
+    echo "direkt: ${VERCEL_URL}/${RESULT_PATH}/"
+    if [ -z "$RESULT_EXPIRES" ] || [ ! "$RESULT_EXPIRES" \< "$TODAY" ]; then
+      echo "teilen: ${VERCEL_URL}/latest/${RESULT_SLUG}/   <- immer die neueste Version"
+    else
+      echo "hinweis: bereits abgelaufen — nicht im Index, kein latest/-Link."
+    fi
+  fi
 else
   echo "hinweis: keine VERCEL_URL in .showroom-config — Live-Link unbekannt."
 fi

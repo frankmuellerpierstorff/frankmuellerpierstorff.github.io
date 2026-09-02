@@ -7,13 +7,16 @@ Kein Kopieren in Kunden-Repos von Hand, kein manuelles Editieren von `index.html
 oder `README.md` in einem Showroom-Repo — das erledigt das Script.
 
 ```
-share [--to <typ>] [--force] <kunde> <datei-oder-ordner>
+share [--to <typ>] [--note <text>] [--status draft|review|final]
+      [--expires 30d|2w|3m|1y|YYYY-MM-DD] [--force] <kunde> <datei-oder-ordner>
+unshare <kunde> <artefakt|slug>
 ```
 
-Script: `bin/share`. Einmalig verlinken:
+Script: `bin/share`, `unshare` ist ein Symlink darauf. Einmalig verlinken:
 
 ```
 ln -s "$PWD/bin/share" ~/.local/bin/share
+ln -s "$PWD/bin/share" ~/.local/bin/unshare
 ```
 
 ### Was passiert
@@ -28,6 +31,21 @@ ln -s "$PWD/bin/share" ~/.local/bin/share
 4. `README.md` → Abschnitt `## Aktuell`, neuer Eintrag oben.
 5. `git add` / `commit "share: <dateiname>"` / `push`.
 6. Ausgabe: Repo-URL + Vercel-URL (aus `.showroom-config`).
+
+### Versionen
+
+Derselbe Dateiname legt eine neue Version daneben: `…-pitch-deck/`, dann
+`…-pitch-deck-v2/`. Alte Versionen bleiben erreichbar und stehen im Index
+ausgegraut. `latest/<slug>/` leitet immer auf die neueste — **diesen Link an
+Kunden schicken**, dann veraltet keine verschickte URL.
+
+### Ablauf und Rueckzug
+
+`--expires` schreibt ein Ablaufdatum in `.share-meta`. Abgelaufene Artefakte
+fallen beim naechsten Lauf aus Index und `latest/`. Die Dateien bleiben unter
+ihrer direkten URL erreichbar — echtes Blocken braucht die Auth-Schicht.
+`unshare <kunde> <artefakt|slug>` loescht ein Artefakt wirklich und
+regeneriert Index, `latest/` und README.
 
 Kein Deploy im Script — Vercel hängt am Repo und deployt beim Push.
 
