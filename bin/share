@@ -5,6 +5,8 @@
 #
 #   share [--to <typ>] [--note <text>] [--status draft|final]
 #         [--expires <30d|2w|3m|YYYY-MM-DD>] [--force] <kunde> <datei-oder-ordner>
+#   share --protect [--password <pw>] <kunde>
+#   share --unprotect <kunde>
 #   unshare <kunde> <artefakt|slug>
 #
 # Erwartet einen Klon unter $SHOWROOM_ROOT/<kunde> (Default ~/showrooms/<kunde>),
@@ -40,6 +42,8 @@ info() { printf '%s\n' "$*" >&2; }
 usage() {
   cat >&2 <<'USAGE'
 usage: share [optionen] <kunde> <datei-oder-ordner>
+       share --protect [--password <pw>] <kunde>
+       share --unprotect <kunde>
        unshare <kunde> <artefakt|slug>
 
   --to <typ>         Typ-Ordner erzwingen (statt Endungs-Routing)
@@ -48,6 +52,9 @@ usage: share [optionen] <kunde> <datei-oder-ordner>
   --expires <spec>   30d | 2w | 3m | 1y | YYYY-MM-DD
   --force            gleichnamigen Artefakt-Ordner ersetzen statt neue Version
   --keep-version     keine neue Version anlegen (nur mit --force sinnvoll)
+  --protect          Showroom mit Passwort schuetzen (ohne --password: generiert)
+  --password <pw>    Passwort selbst setzen (sonst SHOWROOM_PASSWORD oder generiert)
+  --unprotect        Passwortschutz entfernen
 
 Routing (Default):  pdf pptx key -> decks | html -> html | mp4 mov webm -> videos
                     png jpg svg gif -> images | docx md xlsx csv txt -> docs
@@ -57,9 +64,12 @@ Pro Kunde ueberschreibbar in .showroom-config:  ROUTE_zip=downloads
 Versionen: derselbe Dateiname landet als -v2, -v3 daneben; die alten bleiben
 erreichbar. latest/<slug>/ zeigt immer auf die neueste — diesen Link verschicken.
 
-Ablauf: abgelaufene Artefakte verschwinden aus Index und latest/. Die Dateien
-bleiben unter ihrer direkten URL erreichbar, bis sie per unshare entfernt oder
-von einer Auth-Schicht geblockt werden.
+Ablauf: abgelaufene Artefakte verschwinden aus Index und latest/. Mit aktivem
+Passwortschutz liefert die Middleware ab dem Stichtag zusaetzlich 410 aus.
+
+Schutz: --protect legt salt+PBKDF2-Hash in .showroom-auth.json ab (nie das
+Passwort) und generiert middleware.js. Der Kunde tippt das Passwort einmal,
+danach traegt ein signiertes HttpOnly-Cookie 30 Tage.
 
 env: SHOWROOM_ROOT (~/showrooms), SHOWROOM_OWNER, SHOWROOM_REPO_PREFIX,
      SHOWROOM_REMOTE_BASE
@@ -71,6 +81,7 @@ USAGE
 
 FORCE=0
 KEEP_VERSION=0
+PASSWORD="${SHOWROOM_PASSWORD:-}"
 FORCE_DIR=""
 NOTE=""
 STATUS=""
@@ -88,16 +99,28 @@ while [ $# -gt 0 ]; do
     --expires=*) EXPIRES_SPEC="${1#--expires=}"; shift ;;
     --force)     FORCE=1; shift ;;
     --keep-version) KEEP_VERSION=1; shift ;;
+    --protect)   MODE="protect"; shift ;;
+    --unprotect) MODE="unprotect"; shift ;;
+    --password)  [ $# -ge 2 ] || usage; PASSWORD="$2"; shift 2 ;;
+    --password=*) PASSWORD="${1#--password=}"; shift ;;
     -h|--help)   usage ;;
     --)          shift; while [ $# -gt 0 ]; do ARGS+=("$1"); shift; done ;;
     -*)          die "unbekannte Option: $1" ;;
     *)           ARGS+=("$1"); shift ;;
   esac
 done
-[ "${#ARGS[@]}" -eq 2 ] || usage
-
-KUNDE="${ARGS[0]}"
-TARGET_ARG="${ARGS[1]%/}"
+case "$MODE" in
+  protect|unprotect)
+    [ "${#ARGS[@]}" -eq 1 ] || usage
+    KUNDE="${ARGS[0]}"
+    TARGET_ARG=""
+    ;;
+  *)
+    [ "${#ARGS[@]}" -eq 2 ] || usage
+    KUNDE="${ARGS[0]}"
+    TARGET_ARG="${ARGS[1]%/}"
+    ;;
+esac
 
 case "$STATUS" in ""|draft|review|final) ;; *) die "--status: draft, review oder final" ;; esac
 
@@ -176,7 +199,7 @@ clone_repo() {
 }
 
 if [ ! -d "$REPO" ]; then
-  [ "$MODE" = "unshare" ] && die "kein Klon unter $REPO — nichts zurueckzuziehen."
+  [ "$MODE" = "share" ] || die "kein Klon unter $REPO — dort ist noch nichts."
   clone_repo
 elif [ ! -d "$REPO/.git" ]; then
   die "$REPO existiert, ist aber kein git-Repo."
@@ -436,9 +459,273 @@ $(collect_entries | cut -d"$SEP" -f2,3 | tr "$SEP" '/' | sed 's|^|       |')"
   info "entfernt: $hit/  ($RESULT_TITLE)"
 }
 
+# ---------------------------------------------------------------- schutz
+
+AUTH_FILE_NAME=".showroom-auth.json"
+
+need_node() {
+  command -v node >/dev/null 2>&1 \
+    || die "node wird gebraucht, um das Passwort zu hashen (PBKDF2). Bitte installieren."
+}
+
+gen_password() {
+  need_node
+  node -e 'process.stdout.write(require("crypto").randomBytes(12).toString("base64url"))'
+}
+
+# Passwort kommt ueber die Umgebung, nicht ueber argv — argv ist in ps sichtbar.
+gen_auth_json() { # gen_auth_json  (liest $SHARE_PW)
+  need_node
+  SHARE_PW="$SHARE_PW" node -e '
+    const crypto = require("crypto");
+    const pw = process.env.SHARE_PW || "";
+    const iterations = 120000;
+    const salt = crypto.randomBytes(16);
+    const hash = crypto.pbkdf2Sync(pw, salt, iterations, 32, "sha256");
+    const b64u = (b) => b.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    process.stdout.write(JSON.stringify({
+      salt: salt.toString("base64"),
+      iterations,
+      hash: b64u(hash),
+    }));
+  '
+}
+
+do_protect() {
+  local generated=0
+  if [ -z "$PASSWORD" ]; then
+    PASSWORD="$(gen_password)"
+    generated=1
+  fi
+  SHARE_PW="$PASSWORD" gen_auth_json > "$REPO/$AUTH_FILE_NAME.tmp" \
+    || die "Hashing fehlgeschlagen."
+  mv "$REPO/$AUTH_FILE_NAME.tmp" "$REPO/$AUTH_FILE_NAME"
+  RESULT_TITLE="Passwortschutz gesetzt"
+  RESULT_PATH="$AUTH_FILE_NAME"
+  RESULT_PASSWORD="$PASSWORD"
+  RESULT_GENERATED="$generated"
+  info "-> Passwortschutz aktiv."
+}
+
+do_unprotect() {
+  [ -f "$REPO/$AUTH_FILE_NAME" ] || die "fuer '$KUNDE' war kein Passwort gesetzt."
+  rm -f "$REPO/$AUTH_FILE_NAME"
+  RESULT_TITLE="Passwortschutz entfernt"
+  RESULT_PATH="$AUTH_FILE_NAME"
+  info "-> Passwortschutz entfernt, Showroom ist offen."
+}
+
+# ---------------------------------------------------------------- middleware
+
+expires_json() {
+  local first=1 d dir folder slug ver status expired title note exp
+  printf '{'
+  while IFS="$SEP" read -r d dir folder slug ver status expired title note; do
+    [ -d "$REPO/$dir/$folder" ] || continue
+    exp="$(meta_get "$REPO/$dir/$folder" expires)"
+    [ -n "$exp" ] || continue
+    [ "$first" -eq 1 ] || printf ','
+    first=0
+    printf '"%s/%s":"%s"' "$dir" "$folder" "$exp"
+  done < <(collect_entries)
+  printf '}'
+}
+
+write_middleware() {
+  local auth="null"
+  [ -f "$REPO/$AUTH_FILE_NAME" ] && auth="$(cat "$REPO/$AUTH_FILE_NAME")"
+
+  {
+    printf '// Generiert von `share` — nicht von Hand editieren, wird ueberschrieben.\n'
+    printf '// Schuetzt den Showroom mit einem Passwort und setzt Ablaufdaten durch.\n\n'
+    printf "import { next } from '@vercel/edge'\n\n"
+    printf 'const AUTH = %s\n' "$auth"
+    printf 'const EXPIRES = %s\n' "$(expires_json)"
+    cat <<'MW'
+const COOKIE = '__showroom'
+const MAXAGE = 60 * 60 * 24 * 30
+const enc = new TextEncoder()
+
+const b64u = (buf) =>
+  btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+
+async function derive(password) {
+  const salt = Uint8Array.from(atob(AUTH.salt), (c) => c.charCodeAt(0))
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, [
+    'deriveBits',
+  ])
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: AUTH.iterations, hash: 'SHA-256' },
+    key,
+    256
+  )
+  return b64u(bits)
+}
+
+// Signierschluessel haengt am gespeicherten Hash. Optional mit SHOWROOM_SECRET
+// haerten, dann reicht ein Repo-Leak allein nicht mehr zum Faelschen.
+async function sign(value) {
+  const secret = (globalThis.process && process.env && process.env.SHOWROOM_SECRET) || ''
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(AUTH.hash + AUTH.salt + secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  return b64u(await crypto.subtle.sign('HMAC', key, enc.encode(value)))
+}
+
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
+}
+
+function safeNext(value) {
+  return typeof value === 'string' && /^\/(?!\/)/.test(value) ? value : '/'
+}
+
+function expiryFor(path) {
+  for (const key of Object.keys(EXPIRES)) {
+    if (path === key || path.startsWith(key + '/')) return EXPIRES[key]
+  }
+  return null
+}
+
+const shell = (title, body) => `<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>${title}</title>
+<style>
+  :root { color-scheme: light dark; --fg:#111; --muted:#6b7280; --line:#e5e7eb; --bg:#fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e8e8e8; --muted:#9aa0a6; --line:#2a2a2a; --bg:#0e0e0e; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; padding:1.5rem;
+         background:var(--bg); color:var(--fg);
+         font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+  .card { width:100%; max-width:22rem; }
+  h1 { font-size:1.15rem; font-weight:600; margin:0 0 .35rem; letter-spacing:-.01em; }
+  p { color:var(--muted); font-size:.9rem; margin:0 0 1.5rem; }
+  form { display:flex; flex-direction:column; gap:.6rem; }
+  input { font:inherit; padding:.65rem .8rem; border:1px solid var(--line); border-radius:.4rem;
+          background:transparent; color:inherit; }
+  button { font:inherit; padding:.65rem .8rem; border:1px solid var(--fg); border-radius:.4rem;
+           background:var(--fg); color:var(--bg); cursor:pointer; }
+  .err { color:#b42318; font-size:.85rem; margin:0 0 .8rem; }
+</style>
+<div class="card">${body}</div>`
+
+const loginPage = (nextPath, failed) =>
+  shell(
+    'Geschuetzter Showroom',
+    `<h1>Geschuetzter Showroom</h1>
+     <p>Bitte das Passwort eingeben, das du mit den Unterlagen bekommen hast.</p>
+     ${failed ? '<p class="err">Passwort stimmt nicht.</p>' : ''}
+     <form method="POST" action="/__auth">
+       <input type="hidden" name="next" value="${nextPath.replace(/"/g, '&quot;')}">
+       <input type="password" name="password" placeholder="Passwort" autofocus
+              autocomplete="current-password" required>
+       <button type="submit">Oeffnen</button>
+     </form>`
+  )
+
+const gonePage = (until) =>
+  shell(
+    'Nicht mehr verfuegbar',
+    `<h1>Nicht mehr verfuegbar</h1>
+     <p>Dieses Deliverable war bis ${until} freigegeben. Melde dich, wenn du es noch brauchst.</p>`
+  )
+
+const html = (body, status) =>
+  new Response(body, {
+    status,
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+  })
+
+export default async function middleware(request) {
+  const url = new URL(request.url)
+  let path
+  try {
+    path = decodeURIComponent(url.pathname)
+  } catch {
+    path = url.pathname
+  }
+  path = path.replace(/^\/+/, '').replace(/\/+$/, '')
+
+  const until = expiryFor(path)
+  if (until && until < new Date().toISOString().slice(0, 10)) {
+    return html(gonePage(until), 410)
+  }
+
+  if (!AUTH) return next()
+
+  if (url.pathname === '/__auth') {
+    if (request.method !== 'POST') {
+      return Response.redirect(new URL('/', request.url), 303)
+    }
+    const form = await request.formData()
+    const target = safeNext(form.get('next'))
+    const given = await derive(String(form.get('password') || ''))
+    if (!safeEqual(given, AUTH.hash)) {
+      // Bremst Brute Force, ohne Zustand zu brauchen.
+      await new Promise((r) => setTimeout(r, 500))
+      return html(loginPage(target, true), 401)
+    }
+    const expires = Math.floor(Date.now() / 1000) + MAXAGE
+    const token = `${expires}.${await sign(String(expires))}`
+    return new Response(null, {
+      status: 303,
+      headers: {
+        location: target,
+        'set-cookie': `${COOKIE}=${token}; Path=/; Max-Age=${MAXAGE}; HttpOnly; Secure; SameSite=Lax`,
+      },
+    })
+  }
+
+  const raw = (request.headers.get('cookie') || '')
+    .split(/;\s*/)
+    .find((c) => c.startsWith(COOKIE + '='))
+  if (raw) {
+    const [stamp, sig] = raw.slice(COOKIE.length + 1).split('.')
+    if (stamp && sig && Number(stamp) > Date.now() / 1000 && safeEqual(sig, await sign(stamp))) {
+      return next()
+    }
+  }
+
+  return html(loginPage(url.pathname + url.search, false), 401)
+}
+MW
+  } > "$REPO/middleware.js"
+
+  # Vercel braucht die Abhaengigkeit fuer next(); kein Build-Script noetig.
+  if [ ! -f "$REPO/package.json" ]; then
+    cat > "$REPO/package.json" <<'PKG'
+{
+  "private": true,
+  "dependencies": {
+    "@vercel/edge": "^1.1.1"
+  }
+}
+PKG
+  elif ! grep -q '@vercel/edge' "$REPO/package.json"; then
+    info "achtung: package.json vorhanden, aber ohne @vercel/edge — bitte ergaenzen,"
+    info "         sonst schlaegt der Build der middleware.js fehl."
+  fi
+}
+
 case "$MODE" in
-  share)   do_share ;;
-  unshare) do_unshare ;;
+  share)     do_share ;;
+  unshare)   do_unshare ;;
+  protect)   do_protect ;;
+  unprotect) do_unprotect ;;
 esac
 
 # ---------------------------------------------------------------- latest/
@@ -545,20 +832,28 @@ HEAD
 
 write_latest
 write_index
+write_middleware
 
 # ---------------------------------------------------------------- README
 
 README="$REPO/README.md"
-if [ "$MODE" = "share" ]; then
-  ENTRY="- ${TODAY} — ${RESULT_TITLE}"
-  [ "$RESULT_VERSION" -gt 1 ] && ENTRY="$ENTRY (v${RESULT_VERSION})"
-  [ -n "$STATUS" ] && ENTRY="$ENTRY [${STATUS}]"
-  ENTRY="$ENTRY → \`${RESULT_PATH}/\`"
-  [ -n "$NOTE" ] && ENTRY="$ENTRY — ${NOTE}"
-  [ -n "$RESULT_EXPIRES" ] && ENTRY="$ENTRY — laeuft ab ${RESULT_EXPIRES}"
-else
-  ENTRY="- ${TODAY} — zurueckgezogen: ${RESULT_TITLE} (\`${RESULT_PATH}/\`)"
-fi
+case "$MODE" in
+  share)
+    ENTRY="- ${TODAY} — ${RESULT_TITLE}"
+    [ "$RESULT_VERSION" -gt 1 ] && ENTRY="$ENTRY (v${RESULT_VERSION})"
+    [ -n "$STATUS" ] && ENTRY="$ENTRY [${STATUS}]"
+    ENTRY="$ENTRY → \`${RESULT_PATH}/\`"
+    [ -n "$NOTE" ] && ENTRY="$ENTRY — ${NOTE}"
+    [ -n "$RESULT_EXPIRES" ] && ENTRY="$ENTRY — laeuft ab ${RESULT_EXPIRES}"
+    ;;
+  unshare)
+    ENTRY="- ${TODAY} — zurueckgezogen: ${RESULT_TITLE} (\`${RESULT_PATH}/\`)"
+    ;;
+  *)
+    # Das Passwort selbst landet nie im Repo.
+    ENTRY="- ${TODAY} — ${RESULT_TITLE}"
+    ;;
+esac
 
 if [ ! -f "$README" ]; then
   printf '# %s\n\n## Aktuell\n\n%s\n' "$REPO_NAME" "$ENTRY" > "$README"
@@ -611,12 +906,24 @@ VERCEL_URL="$(cfg_get VERCEL_URL)"
 VERCEL_URL="${VERCEL_URL%/}"
 
 echo
-if [ "$MODE" = "unshare" ]; then
-  echo "zurueckgezogen: ${RESULT_PATH}/"
-else
-  echo "veroeffentlicht: ${RESULT_PATH}/  (v${RESULT_VERSION})"
-  [ -n "$RESULT_EXPIRES" ] && echo "laeuft ab:      ${RESULT_EXPIRES}"
-fi
+case "$MODE" in
+  unshare)   echo "zurueckgezogen: ${RESULT_PATH}/" ;;
+  unprotect) echo "Passwortschutz entfernt — der Showroom ist jetzt offen." ;;
+  protect)
+    echo "Passwortschutz aktiv."
+    echo
+    echo "  Passwort: ${RESULT_PASSWORD}"
+    echo
+    if [ "$RESULT_GENERATED" = "1" ]; then
+      echo "Generiert, wird nirgends gespeichert — jetzt in den Passwortmanager,"
+      echo "sonst ist es weg. Neu setzen: share --protect ${KUNDE}"
+    fi
+    ;;
+  *)
+    echo "veroeffentlicht: ${RESULT_PATH}/  (v${RESULT_VERSION})"
+    [ -n "$RESULT_EXPIRES" ] && echo "laeuft ab:      ${RESULT_EXPIRES}"
+    ;;
+esac
 [ -n "$REPO_URL" ] && echo "repo:   $REPO_URL"
 if [ -n "$VERCEL_URL" ]; then
   echo "live:   $VERCEL_URL"

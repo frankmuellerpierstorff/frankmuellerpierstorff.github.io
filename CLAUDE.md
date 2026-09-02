@@ -10,6 +10,8 @@ oder `README.md` in einem Showroom-Repo — das erledigt das Script.
 share [--to <typ>] [--note <text>] [--status draft|review|final]
       [--expires 30d|2w|3m|1y|YYYY-MM-DD] [--force] <kunde> <datei-oder-ordner>
 unshare <kunde> <artefakt|slug>
+share --protect [--password <pw>] <kunde>
+share --unprotect <kunde>
 ```
 
 Script: `bin/share`, `unshare` ist ein Symlink darauf. Einmalig verlinken:
@@ -39,11 +41,38 @@ Derselbe Dateiname legt eine neue Version daneben: `…-pitch-deck/`, dann
 ausgegraut. `latest/<slug>/` leitet immer auf die neueste — **diesen Link an
 Kunden schicken**, dann veraltet keine verschickte URL.
 
+### Passwortschutz
+
+```
+share --protect acme                      # generiert ein Passwort und zeigt es einmal
+share --protect --password "geheim" acme  # eigenes Passwort setzen
+share --unprotect acme                    # Schutz entfernen
+```
+
+`--protect` legt Salt und PBKDF2-Hash (120k Runden, SHA-256) in
+`.showroom-auth.json` ab — **das Passwort selbst wird nirgends gespeichert**.
+Ein generiertes Passwort erscheint genau einmal in der Ausgabe, danach ist es
+weg; direkt in den Passwortmanager.
+
+`share` generiert dazu `middleware.js` im Showroom-Repo neu (Vercel Edge
+Middleware, `@vercel/edge` in der `package.json`, kein Build-Script). Die
+Middleware liegt vor allen Dateien, also greift der Schutz auch auf der
+`*.vercel.app`-URL. Der Kunde tippt das Passwort einmal auf einer schlichten
+Loginseite, danach traegt ein signiertes HttpOnly-Cookie 30 Tage.
+
+Der Cookie-Signierschluessel wird aus dem gespeicherten Hash abgeleitet. Wer
+zusaetzlich haerten will, setzt in Vercel die Env-Var `SHOWROOM_SECRET` — dann
+reicht ein Repo-Leak allein nicht mehr, um Cookies zu faelschen.
+
+Grenze: ein Passwort gilt fuer alle Empfaenger. Wer es weitergibt, gibt Zugang
+weiter, und die Logs zeigen nicht, wer drin war.
+
 ### Ablauf und Rueckzug
 
 `--expires` schreibt ein Ablaufdatum in `.share-meta`. Abgelaufene Artefakte
-fallen beim naechsten Lauf aus Index und `latest/`. Die Dateien bleiben unter
-ihrer direkten URL erreichbar — echtes Blocken braucht die Auth-Schicht.
+fallen beim naechsten Lauf aus Index und `latest/`, und die Middleware liefert
+ab dem Stichtag 410 aus — auch fuer Dateien tief im Artefakt-Ordner und auch
+ohne Passwortschutz.
 `unshare <kunde> <artefakt|slug>` loescht ein Artefakt wirklich und
 regeneriert Index, `latest/` und README.
 
